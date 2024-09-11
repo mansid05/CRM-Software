@@ -1,6 +1,10 @@
 import 'package:crm_primine/screens/accounts/account_page.dart';
+import 'package:crm_primine/screens/meeting/meeting_page.dart';
+import 'package:crm_primine/screens/tasks/task_page.dart';
 import 'package:flutter/material.dart';
+import 'call/call_page.dart';
 import 'contacts/contact_page.dart';
+import 'deals/deal_page.dart';
 import 'leads/lead_list_page.dart'; // Ensure this import is correct
 
 class DashboardPage extends StatelessWidget {
@@ -120,28 +124,60 @@ class DashboardPage extends StatelessWidget {
               leading: Icon(Icons.monetization_on),
               title: Text('Deals'),
               onTap: () {
-                // Handle deals navigation
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DealPage(
+                      firstName: firstName,
+                      lastName: lastName,
+                      email: email,
+                    ),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.task),
               title: Text('Tasks'),
               onTap: () {
-                // Handle tasks navigation
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TaskPage(
+                      firstName: firstName,
+                      lastName: lastName,
+                      email: email,
+                    ),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.meeting_room),
               title: Text('Meetings'),
               onTap: () {
-                // Handle meetings navigation
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MeetingPage(
+                      firstName: firstName,
+                      lastName: lastName,
+                      email: email,
+                    ),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.call),
               title: Text('Calls'),
               onTap: () {
-                // Handle calls navigation
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CallPage(),
+                  ),
+                );
               },
             ),
             ListTile(

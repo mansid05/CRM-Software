@@ -22,6 +22,8 @@ class AddAccountPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final addAccountFormKey = GlobalKey<_AddAccountFormState>(); // New key
+
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(
@@ -29,11 +31,20 @@ class AddAccountPage extends StatelessWidget {
         ),
         title: Text('Add Account', style: TextStyle(color: Colors.white)),
         backgroundColor: Color(0xFF7b68ee),
+        actions: [
+          IconButton(
+            onPressed: () {
+              addAccountFormKey.currentState?.submitForm(); // Access form's submit
+            },
+            icon: Icon(Icons.check),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: AddAccountForm(
+            key: addAccountFormKey, // Pass key to AddAccountForm
             firstName: firstName,
             lastName: lastName,
             email: email,
@@ -50,10 +61,11 @@ class AddAccountForm extends StatefulWidget {
   final String email;
 
   AddAccountForm({
+    required Key key,  // Make sure the key is required
     required this.firstName,
     required this.lastName,
     required this.email,
-  });
+  }) : super(key: key);
 
   @override
   _AddAccountFormState createState() => _AddAccountFormState();
@@ -337,5 +349,9 @@ class _AddAccountFormState extends State<AddAccountForm> {
         ),
       ),
     );
+  }
+
+  void submitForm() {
+    _handleSaveAccount();
   }
 }

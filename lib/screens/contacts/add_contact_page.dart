@@ -24,6 +24,8 @@ class AddContactPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final addContactFormKey = GlobalKey<_AddContactFormState>(); // New key
+
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(
@@ -31,11 +33,20 @@ class AddContactPage extends StatelessWidget {
         ),
         title: Text('Add Contact', style: TextStyle(color: Colors.white)),
         backgroundColor: Color(0xFF7b68ee),
+        actions: [
+          IconButton(
+            onPressed: () {
+              addContactFormKey.currentState?.submitForm(); // Access form's submit
+            },
+            icon: Icon(Icons.check),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: AddContactForm(
+            key: addContactFormKey, // Pass key to AddAccountForm
             firstName: firstName,
             lastName: lastName,
             email: email,
@@ -52,10 +63,11 @@ class AddContactForm extends StatefulWidget {
   final String email;
 
   AddContactForm({
+    required Key key,  // Make sure the key is required
     required this.firstName,
     required this.lastName,
     required this.email,
-  });
+  }) : super(key: key);
 
   @override
   _AddContactFormState createState() => _AddContactFormState();
@@ -404,5 +416,8 @@ class _AddContactFormState extends State<AddContactForm> {
         ],
       ),
     );
+  }
+  void submitForm() {
+    _handleSaveContact();
   }
 }

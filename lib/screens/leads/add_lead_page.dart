@@ -24,6 +24,8 @@ class AddLeadPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final addLeadFormKey = GlobalKey<_AddLeadFormState>(); // New key
+
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(
@@ -31,11 +33,20 @@ class AddLeadPage extends StatelessWidget {
         ),
         title: Text('Add Lead', style: TextStyle(color: Colors.white)),
         backgroundColor: Color(0xFF7b68ee),
+        actions: [
+          IconButton(
+            onPressed: () {
+              addLeadFormKey.currentState?.submitForm(); // Access form's submit
+            },
+            icon: Icon(Icons.check),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: AddLeadForm(
+            key: addLeadFormKey, // Pass key to AddLeadForm
             firstName: firstName,
             lastName: lastName,
             email: email,
@@ -52,10 +63,11 @@ class AddLeadForm extends StatefulWidget {
   final String email;
 
   AddLeadForm({
+    required Key key,  // Make sure the key is required
     required this.firstName,
     required this.lastName,
     required this.email,
-  });
+  }) : super(key: key);
 
   @override
   _AddLeadFormState createState() => _AddLeadFormState();
@@ -394,5 +406,8 @@ class _AddLeadFormState extends State<AddLeadForm> {
         ],
       ),
     );
+  }
+  void submitForm() {
+    _handleSaveLead();
   }
 }

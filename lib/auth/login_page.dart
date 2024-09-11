@@ -24,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    var url = Uri.parse('http://192.168.29.164/login.php'); // Replace with your server URL
+    var url = Uri.parse('http://192.168.31.241/login.php'); // Replace with your server URL
     var response = await http.post(url, body: {
       'email': email,
       'password': password,
