@@ -1,11 +1,15 @@
-import 'package:crm_primine/screens/accounts/account_page.dart';
-import 'package:crm_primine/screens/meeting/meeting_page.dart';
-import 'package:crm_primine/screens/tasks/task_page.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../auth/login_page.dart';
+import 'accounts/account_page.dart';
+import 'meeting/meeting_page.dart';
+import 'tasks/task_page.dart';
 import 'call/call_page.dart';
 import 'contacts/contact_page.dart';
 import 'deals/deal_page.dart';
-import 'leads/lead_list_page.dart'; // Ensure this import is correct
+import 'leads/lead_list_page.dart';
 
 class DashboardPage extends StatelessWidget {
   final String firstName;
@@ -66,7 +70,11 @@ class DashboardPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => DashboardPage(firstName: firstName, lastName: lastName, email: email),
+                    builder: (context) => DashboardPage(
+                      firstName: firstName,
+                      lastName: lastName,
+                      email: email,
+                    ),
                   ),
                 );
               },
@@ -103,7 +111,6 @@ class DashboardPage extends StatelessWidget {
                 );
               },
             ),
-
             ListTile(
               leading: Icon(Icons.account_circle),
               title: Text('Accounts'),
@@ -202,6 +209,14 @@ class DashboardPage extends StatelessWidget {
                 // Handle feedback navigation
               },
             ),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.logout),
+              title: Text('Logout'),
+              onTap: () {
+                _showLogoutDialog(context);
+              },
+            ),
           ],
         ),
       ),
@@ -281,4 +296,49 @@ class DashboardPage extends StatelessWidget {
       ),
     );
   }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Logout'),
+          content: Text('Are you sure you want to logout?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Logout'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                _logout(context); // Perform logout
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _logout(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Clear stored session information locally
+    await prefs.clear();
+
+    // Navigate back to the login page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Logged out successfully.')),
+    );
+  }
 }
+

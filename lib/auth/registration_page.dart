@@ -41,7 +41,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             SnackBar(content: Text("Passwords don't match")));
       } else {
         try {
-          var url = Uri.parse('http://192.168.31.241/register.php'); // Replace with your server URL
+          var url = Uri.parse('http://192.168.29.164/register.php'); // Replace with your server URL
           var response = await http.post(url, body: {
             'firstName': firstName,
             'lastName': lastName,
