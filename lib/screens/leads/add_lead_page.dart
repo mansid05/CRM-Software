@@ -2,13 +2,21 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 Future<void> _saveLead(Map<String, dynamic> lead) async {
-  final prefs = await SharedPreferences.getInstance();
-  final leadsJson = prefs.getStringList('leads') ?? [];
-  leadsJson.add(json.encode(lead));
-  await prefs.setStringList('leads', leadsJson);
+  final url = 'http://192.168.29.164/save_lead.php'; // Replace with your PHP URL
+  final response = await http.post(
+    Uri.parse(url),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: json.encode(lead),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to save lead');
+  }
 }
 
 class AddLeadPage extends StatelessWidget {

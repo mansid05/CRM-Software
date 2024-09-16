@@ -1,25 +1,25 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+
 import 'add_lead_page.dart';
 
-class LeadListPage extends StatefulWidget {
+class LeadPage extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String email;
 
-  LeadListPage({
+  LeadPage({
     required this.firstName,
     required this.lastName,
     required this.email,
   });
 
   @override
-  _LeadListPageState createState() => _LeadListPageState();
+  _LeadPageState createState() => _LeadPageState();
 }
 
-class _LeadListPageState extends State<LeadListPage> {
+class _LeadPageState extends State<LeadPage> {
   List<Map<String, dynamic>> _leads = [];
 
   @override
@@ -29,22 +29,52 @@ class _LeadListPageState extends State<LeadListPage> {
   }
 
   Future<void> _fetchLeads() async {
-    final prefs = await SharedPreferences.getInstance();
-    final leadsJson = prefs.getStringList('leads') ?? [];
-    setState(() {
-      _leads = leadsJson.map((jsonStr) => json.decode(jsonStr) as Map<String, dynamic>).toList();
-    });
+    try {
+      final response = await http.get(Uri.parse('http://192.168.29.164/get_leads.php'));
+
+      if (response.statusCode == 200) {
+        print('Response: ${response.body}'); // Debugging the response
+        final List<dynamic> leadsJson = json.decode(response.body);
+
+        setState(() {
+          _leads = leadsJson.cast<Map<String, dynamic>>();
+        });
+
+        if (_leads.isEmpty) {
+          print('No leads found');
+        }
+      } else {
+        print('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching leads: $e');
+    }
   }
 
-  Future<void> _deleteLead(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    final leadsJson = prefs.getStringList('leads') ?? [];
-    leadsJson.removeAt(index); // Remove the lead from the list
-    await prefs.setStringList('leads', leadsJson); // Save updated list
+  Future<void> _deleteLead(int id) async {
+    final response = await http.post(
+      Uri.parse('http://192.168.29.164/delete_lead.php'),
+      body: json.encode({'id': id}),
+      headers: {'Content-Type': 'application/json'},
+    );
 
-    setState(() {
-      _leads.removeAt(index); // Update UI
-    });
+    print('Delete response status: ${response.statusCode}');
+    print('Delete response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _leads.removeWhere((lead) => lead['id'] == id);
+      });
+    } else {
+      print('Failed to delete lead');
+    }
+  }
+
+  Future<void> _showLeadDetails(Map<String, dynamic> lead) async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => LeadDetailSheet(lead: lead),
+    );
   }
 
   @override
@@ -69,7 +99,7 @@ class _LeadListPageState extends State<LeadListPage> {
                     email: widget.email,
                   ),
                 ),
-              ).then((_) => _fetchLeads()); // Refresh leads after adding a new one
+              ).then((_) => _fetchLeads());
             },
           ),
         ],
@@ -108,7 +138,8 @@ class _LeadListPageState extends State<LeadListPage> {
                     subtitle: Text(lead['company'] ?? 'No Company'),
                     leading: lead['photo'] != null && lead['photo'].isNotEmpty
                         ? CircleAvatar(
-                      backgroundImage: FileImage(File(lead['photo']!)),
+                      backgroundImage: NetworkImage('http://192.168.29.164/${lead['photo']}'),
+                      onBackgroundImageError: (_, __) => Icon(Icons.error), // Error handling for invalid images
                     )
                         : CircleAvatar(
                       child: Icon(Icons.person),
@@ -116,12 +147,7 @@ class _LeadListPageState extends State<LeadListPage> {
                       foregroundColor: Colors.white,
                     ),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => LeadDetailPage(lead: lead),
-                        ),
-                      );
+                      _showLeadDetails(lead);
                     },
                   ),
                 ),
@@ -147,7 +173,7 @@ class _LeadListPageState extends State<LeadListPage> {
                     );
 
                     if (shouldDelete) {
-                      _deleteLead(index);
+                      _deleteLead(lead['id']);
                     }
                   },
                 ),
@@ -160,60 +186,46 @@ class _LeadListPageState extends State<LeadListPage> {
   }
 }
 
-class LeadDetailPage extends StatelessWidget {
+class LeadDetailSheet extends StatelessWidget {
   final Map<String, dynamic> lead;
 
-  LeadDetailPage({required this.lead});
+  LeadDetailSheet({required this.lead});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-        iconTheme: IconThemeData(
-          color: Colors.white,
-        ),
-        title: Text('${lead['first_name'] ?? 'Unknown'} ${lead['last_name'] ?? 'Unknown'}', style: TextStyle(color: Colors.white),),
-        backgroundColor: Color(0xFF7b68ee),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            _buildDetailRow('Company', lead['company'] ?? 'N/A'),
-            _buildDetailRow('Title', lead['title'] ?? 'N/A'),
-            _buildDetailRow('Email', lead['email'] ?? 'N/A'),
-            _buildDetailRow('Phone', lead['phone'] ?? 'N/A'),
-            _buildDetailRow('Mobile', lead['mobile'] ?? 'N/A'),
-            _buildDetailRow('Website', lead['website'] ?? 'N/A'),
-            _buildDetailRow('Lead Source', lead['lead_source'] ?? 'N/A'),
-            _buildDetailRow('Lead Status', lead['lead_status'] ?? 'N/A'),
-            _buildDetailRow('Industry', lead['industry'] ?? 'N/A'),
-            _buildDetailRow('No. of Employees', lead['no_of_employees']?.toString() ?? 'N/A'),
-            _buildDetailRow('Annual Revenue', lead['annual_revenue']?.toString() ?? 'N/A'),
-            _buildDetailRow('Rating', lead['rating'] ?? 'N/A'),
-            _buildDetailRow('Skype ID', lead['skype_id'] ?? 'N/A'),
-            _buildDetailRow('Secondary Email', lead['secondary_email'] ?? 'N/A'),
-            _buildDetailRow('Twitter', lead['twitter'] ?? 'N/A'),
-            _buildDetailRow('Street', lead['street'] ?? 'N/A'),
-            _buildDetailRow('City', lead['city'] ?? 'N/A'),
-            _buildDetailRow('State', lead['state'] ?? 'N/A'),
-            _buildDetailRow('Zip Code', lead['zip_code'] ?? 'N/A'),
-            _buildDetailRow('Country', lead['country'] ?? 'N/A'),
-            _buildDetailRow('Description', lead['description'] ?? 'N/A'),
-            _buildDetailRow('Email Opt Out', lead['email_opt_out'] == '1' ? 'Yes' : 'No'),
-            if (lead['photo'] != null && lead['photo'].isNotEmpty && File(lead['photo']!).existsSync())
-              Image.file(
-                File(lead['photo']!),
-                height: 200,
-                fit: BoxFit.cover,
-              ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ListView(
+        children: [
+          _buildDetailRow('Company', lead['company'] ?? 'N/A'),
+          _buildDetailRow('Title', lead['title'] ?? 'N/A'),
+          _buildDetailRow('Email', lead['email'] ?? 'N/A'),
+          _buildDetailRow('Phone', lead['phone'] ?? 'N/A'),
+          _buildDetailRow('Mobile', lead['mobile'] ?? 'N/A'),
+          _buildDetailRow('Website', lead['website'] ?? 'N/A'),
+          _buildDetailRow('Lead Source', lead['lead_source'] ?? 'N/A'),
+          _buildDetailRow('Lead Status', lead['lead_status'] ?? 'N/A'),
+          _buildDetailRow('Industry', lead['industry'] ?? 'N/A'),
+          _buildDetailRow('No. of Employees', lead['no_of_employees']?.toString() ?? 'N/A'),
+          _buildDetailRow('Annual Revenue', lead['annual_revenue']?.toString() ?? 'N/A'),
+          _buildDetailRow('Rating', lead['rating'] ?? 'N/A'),
+          _buildDetailRow('Skype ID', lead['skype_id'] ?? 'N/A'),
+          _buildDetailRow('Secondary Email', lead['secondary_email'] ?? 'N/A'),
+          _buildDetailRow('Twitter', lead['twitter'] ?? 'N/A'),
+          _buildDetailRow('Street', lead['street'] ?? 'N/A'),
+          _buildDetailRow('City', lead['city'] ?? 'N/A'),
+          _buildDetailRow('State', lead['state'] ?? 'N/A'),
+          _buildDetailRow('Zip Code', lead['zip_code'] ?? 'N/A'),
+          _buildDetailRow('Country', lead['country'] ?? 'N/A'),
+          _buildDetailRow('Description', lead['description'] ?? 'N/A'),
+          _buildDetailRow('Email Opt Out', lead['email_opt_out'] == '1' ? 'Yes' : 'No'),
+          if (lead['photo'] != null && lead['photo'].isNotEmpty)
+            Image.network(
+              'http://192.168.29.164/${lead['photo']}',
+              height: 200,
+              fit: BoxFit.cover,
+            ),
+        ],
       ),
     );
   }

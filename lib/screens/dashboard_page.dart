@@ -86,7 +86,7 @@ class DashboardPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => LeadListPage(
+                    builder: (context) => LeadPage(
                       firstName: firstName,
                       lastName: lastName,
                       email: email,
@@ -260,7 +260,7 @@ class DashboardPage extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => LeadListPage(
+                builder: (context) => LeadPage(
                   firstName: firstName,
                   lastName: lastName,
                   email: email,
