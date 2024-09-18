@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
-Future<void> _saveLead(Map<String, dynamic> lead) async {
+Future<void> _saveLead(Map<String, dynamic> leadData) async {
   final url = 'http://192.168.29.164/save_lead.php'; // Replace with your PHP URL
   final response = await http.post(
     Uri.parse(url),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },
-    body: json.encode(lead),
+    body: json.encode(leadData),
   );
 
   if (response.statusCode != 200) {
@@ -289,8 +289,8 @@ class _AddLeadFormState extends State<AddLeadForm> {
             onPressed: _handleSaveLead,
             child: Text('Save Lead', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF7b68ee),
-              alignment: Alignment.center
+                backgroundColor: Color(0xFF7b68ee),
+                alignment: Alignment.center
             ),
           ),
         ],
@@ -415,6 +415,7 @@ class _AddLeadFormState extends State<AddLeadForm> {
       ),
     );
   }
+
   void submitForm() {
     _handleSaveLead();
   }

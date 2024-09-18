@@ -62,9 +62,14 @@ class _LeadPageState extends State<LeadPage> {
     print('Delete response body: ${response.body}');
 
     if (response.statusCode == 200) {
-      setState(() {
-        _leads.removeWhere((lead) => lead['id'] == id);
-      });
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['status'] == 'success') {
+        setState(() {
+          _leads.removeWhere((lead) => lead['id'] == id);
+        });
+      } else {
+        print('Failed to delete lead: ${jsonResponse['message']}');
+      }
     } else {
       print('Failed to delete lead');
     }
