@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
+import '../../constants.dart';
 import 'add_lead_page.dart';
 
 class LeadPage extends StatefulWidget {
@@ -30,7 +30,7 @@ class _LeadPageState extends State<LeadPage> {
 
   Future<void> _fetchLeads() async {
     try {
-      final response = await http.get(Uri.parse('http://192.168.29.164/get_leads.php'));
+      final response = await http.get(Uri.parse(getLeadsUrl));
 
       if (response.statusCode == 200) {
         print('Response: ${response.body}'); // Debugging the response
@@ -51,29 +51,30 @@ class _LeadPageState extends State<LeadPage> {
     }
   }
 
-  Future<void> _deleteLead(int id) async {
-    final response = await http.post(
-      Uri.parse('http://192.168.29.164/delete_lead.php'),
-      body: json.encode({'id': id}),
-      headers: {'Content-Type': 'application/json'},
-    );
+  //Future<void> _deleteLead(int id) async {
+  //     try {
+  //       final response = await http.post(
+  //         Uri.parse(deleteLeadUrl),
+      //body: json.encode({'id': id}),
+      //headers: {'Content-Type': 'application/json'},
+    //);
 
-    print('Delete response status: ${response.statusCode}');
-    print('Delete response body: ${response.body}');
+    //print('Delete response status: ${response.statusCode}');
+    //print('Delete response body: ${response.body}');
 
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      if (jsonResponse['status'] == 'success') {
-        setState(() {
-          _leads.removeWhere((lead) => lead['id'] == id);
-        });
-      } else {
-        print('Failed to delete lead: ${jsonResponse['message']}');
-      }
-    } else {
-      print('Failed to delete lead');
-    }
-  }
+    //if (response.statusCode == 200) {
+      //final jsonResponse = json.decode(response.body);
+      //if (jsonResponse['status'] == 'success') {
+        //setState(() {
+         // _leads.removeWhere((lead) => lead['id'] == id);
+        //});
+     // } else {
+       // print('Failed to delete lead: ${jsonResponse['message']}');
+     // }
+   // } else {
+     // print('Failed to delete lead');
+   // }
+  //}
 
   Future<void> _showLeadDetails(Map<String, dynamic> lead) async {
     showModalBottomSheet(
@@ -139,7 +140,7 @@ class _LeadPageState extends State<LeadPage> {
                 Expanded(
                   child: ListTile(
                     contentPadding: EdgeInsets.all(16),
-                    title: Text('${lead['first_name']} ${lead['last_name']}'),
+                    title: Text(lead['lead_owner']),
                     subtitle: Text(lead['company'] ?? 'No Company'),
                     leading: lead['photo'] != null && lead['photo'].isNotEmpty
                         ? CircleAvatar(
@@ -178,7 +179,7 @@ class _LeadPageState extends State<LeadPage> {
                     );
 
                     if (shouldDelete) {
-                      _deleteLead(lead['id']);
+                      //_deleteLead(lead['id']);
                     }
                   },
                 ),
@@ -202,6 +203,8 @@ class LeadDetailSheet extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: ListView(
         children: [
+          _buildDetailRow('First Name', lead['first_name'] ?? 'N/A'),
+          _buildDetailRow('Last Name', lead['last_name'] ?? 'N/A'),
           _buildDetailRow('Company', lead['company'] ?? 'N/A'),
           _buildDetailRow('Title', lead['title'] ?? 'N/A'),
           _buildDetailRow('Email', lead['email'] ?? 'N/A'),

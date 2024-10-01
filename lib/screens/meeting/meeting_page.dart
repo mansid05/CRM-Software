@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../../constants.dart';
 import 'add_meeting_page.dart';
 
 class MeetingPage extends StatefulWidget {
@@ -28,22 +29,53 @@ class _MeetingPageState extends State<MeetingPage> {
   }
 
   Future<void> _fetchMeetings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final meetingsJson = prefs.getStringList('meetings') ?? [];
-    setState(() {
-      _meetings = meetingsJson.map((jsonStr) => json.decode(jsonStr) as Map<String, dynamic>).toList();
-    });
+    try {
+      final response = await http.get(Uri.parse(getMeetingsUrl));
+
+      if (response.statusCode == 200) {
+        print('Response: ${response.body}');
+        final List<dynamic> meetingsJson = json.decode(response.body);
+
+        setState(() {
+          _meetings = meetingsJson.cast<Map<String, dynamic>>();
+        });
+
+        if (_meetings.isEmpty) {
+          print('No meetings found');
+        }
+      } else {
+        print('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching meetings: $e'); // Will display any connection or parsing errors
+    }
   }
 
-  Future<void> _deleteMeeting(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    final meetingsJson = prefs.getStringList('meetings') ?? [];
-    meetingsJson.removeAt(index); // Remove the meeting from the list
-    await prefs.setStringList('meetings', meetingsJson); // Save updated list
+  //Future<void> _deleteMeeting(int id) async {
+  //     try {
+  //       final response = await http.post(
+  //         Uri.parse(deleteMeetingUrl),
+  //       body: json.encode({'id': id}),
+  //       headers: {'Content-Type': 'application/json'},
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       setState(() {
+  //         _meetings.removeWhere((meeting) => meeting['id'] == id);
+  //       });
+  //     } else {
+  //       print('Failed to delete meeting');
+  //     }
+  //   } catch (e) {
+  //     print('Error deleting meeting: $e');
+  //   }
+  // }
 
-    setState(() {
-      _meetings.removeAt(index); // Update UI
-    });
+  Future<void> _showMeetingDetails(Map<String, dynamic> meeting) async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => MeetingDetailSheet(meeting: meeting),
+    );
   }
 
   @override
@@ -103,18 +135,18 @@ class _MeetingPageState extends State<MeetingPage> {
                 Expanded(
                   child: ListTile(
                     contentPadding: EdgeInsets.all(16),
-                    title: Text('${meeting['first_name']} ${meeting['last_name']}'),
+                    title: Text(meeting['host'] ?? ''),
                     subtitle: Text(meeting['title'] ?? ''),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MeetingDetailPage(meeting: meeting),
-                        ),
-                      );
-                    },
+            leading: CircleAvatar(
+              child: Icon(Icons.meeting_room, size: 40, color: Colors.white),
+              backgroundColor: Color(0xFF7b68ee),
+            ),
+            onTap: () {
+              _showMeetingDetails(meeting);
+              },
                   ),
                 ),
+
                 IconButton(
                   icon: Icon(Icons.delete, color: Color(0xFF7b68ee)),
                   onPressed: () async {
@@ -137,7 +169,7 @@ class _MeetingPageState extends State<MeetingPage> {
                     );
 
                     if (shouldDelete) {
-                      _deleteMeeting(index);
+                      //_deleteMeeting(index);
                     }
                   },
                 ),
@@ -150,30 +182,17 @@ class _MeetingPageState extends State<MeetingPage> {
   }
 }
 
-class MeetingDetailPage extends StatelessWidget {
+class MeetingDetailSheet extends StatelessWidget {
   final Map<String, dynamic> meeting;
 
-  MeetingDetailPage({required this.meeting});
+  MeetingDetailSheet({required this.meeting});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-        iconTheme: IconThemeData(
-          color: Colors.white,
-        ),
-        title: Text('${meeting['first_name'] ?? 'Unknown'} ${meeting['last_name'] ?? 'Unknown'}', style: TextStyle(color: Colors.white),),
-        backgroundColor: Color(0xFF7b68ee),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ListView(
+        children: [
             _buildDetailRow('Title', meeting['title'] ?? 'N/A'),
             _buildDetailRow('From', meeting['from'] ?? 'N/A'),
             _buildDetailRow('To', meeting['to'] ?? 'N/A'),
@@ -187,8 +206,7 @@ class MeetingDetailPage extends StatelessWidget {
             _buildDetailRow('Remainder', meeting['remainder'] ?? 'N/A'),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildDetailRow(String label, String value) {

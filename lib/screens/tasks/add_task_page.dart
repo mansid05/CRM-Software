@@ -1,13 +1,20 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
-Future<void> _saveTask(Map<String, dynamic> task) async {
-  final prefs = await SharedPreferences.getInstance();
-  final tasksJson = prefs.getStringList('tasks') ?? [];
-  tasksJson.add(json.encode(task));
-  await prefs.setStringList('tasks', tasksJson);
+Future<void> _saveTask(Map<String, dynamic> taskData) async {
+  const url = 'http://192.168.29.164/save_task.php'; // Replace with your PHP URL
+  final response = await http.post(
+    Uri.parse(url),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: json.encode(taskData),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to save task');
+  }
 }
 
 class AddTaskPage extends StatelessWidget {
@@ -35,7 +42,7 @@ class AddTaskPage extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () {
-              addTaskFormKey.currentState?.submitForm(); // Access form's submit
+              addTaskFormKey.currentState?.submitForm();
             },
             icon: Icon(Icons.check),
           ),
@@ -45,7 +52,7 @@ class AddTaskPage extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: AddTaskForm(
-            key: addTaskFormKey, // Pass key to AddTaskForm
+            key: addTaskFormKey,
             firstName: firstName,
             lastName: lastName,
             email: email,
@@ -62,7 +69,7 @@ class AddTaskForm extends StatefulWidget {
   final String email;
 
   AddTaskForm({
-    required Key key,  // Make sure the key is required
+    required Key key, // Ensure key is properly required and passed
     required this.firstName,
     required this.lastName,
     required this.email,
@@ -74,17 +81,16 @@ class AddTaskForm extends StatefulWidget {
 
 class _AddTaskFormState extends State<AddTaskForm> {
   final _formKey = GlobalKey<FormState>();
-  File? _imageFile;
   late String _taskOwner;
   String _subject = '';
   String _dueDate = '';
   String _contact = '';
   String _account = '';
-  String _status = 'None';
-  String _priority = 'None';
+  String _status = 'Not Started'; // Setting default status value
+  String _priority = 'Normal'; // Setting default priority value
   bool _sendNotificationEmail = false;
   String _remainder = '';
-  String _repeat = '';
+  String _repeat = 'None'; // Setting default repeat value
   String _description = '';
 
   @override
@@ -110,7 +116,6 @@ class _AddTaskFormState extends State<AddTaskForm> {
       };
 
       await _saveTask(taskData);
-
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -126,11 +131,7 @@ class _AddTaskFormState extends State<AddTaskForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // TASK INFORMATION Section
-          Text(
-            'TASK INFORMATION',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7b68ee)),
-          ),
+          Text('TASK INFORMATION', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7b68ee))),
           SizedBox(height: 10),
           buildDropdownField('Task Owner', [_taskOwner], Icons.person, _taskOwner, (newValue) {
             setState(() {
@@ -141,41 +142,43 @@ class _AddTaskFormState extends State<AddTaskForm> {
           buildTextField('Due Date', Icons.calendar_month, isRequired: true, onChanged: (value) => _dueDate = value),
           buildTextField('Contact', Icons.contact_page, onChanged: (value) => _contact = value),
           buildTextField('Account', Icons.account_box, onChanged: (value) => _account = value),
-          buildDropdownField('Status', ['Not Started', 'Deferred', 'In Progress', 'Completed', 'Waiting for input'], Icons.stacked_bar_chart, _status, (newValue) {
+          buildDropdownField('Status', [
+            'Not Started',
+            'Deferred',
+            'In Progress',
+            'Completed',
+            'Waiting for input'
+          ], Icons.stacked_bar_chart, _status, (newValue) {
             setState(() {
               _status = newValue!;
             });
           }, isRequired: true),
-          buildDropdownField('Priority', ['High', 'Highest', 'Low', 'Lowest', 'Normal'], Icons.low_priority, _priority, (newValue) {
+          buildDropdownField('Priority', [
+            'High',
+            'Highest',
+            'Low',
+            'Lowest',
+            'Normal'
+          ], Icons.low_priority, _priority, (newValue) {
             setState(() {
               _priority = newValue!;
             });
           }, isRequired: true),
-
           buildSwitchField('Send Notification Email'),
           buildTextField('Remainder', Icons.alarm, onChanged: (value) => _remainder = value),
           buildDropdownField('Repeat', ['None', 'Daily', 'Weekly', 'Monthly', 'Yearly'], Icons.repeat, _repeat, (newValue) {
             setState(() {
               _repeat = newValue!;
             });
-          },),
-
-          // DESCRIPTION INFORMATION Section
-          Text(
-            'DESCRIPTION INFORMATION',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7b68ee)),
-          ),
+          }),
+          Text('DESCRIPTION INFORMATION', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7b68ee))),
           SizedBox(height: 10),
           buildTextField('Description', Icons.description, maxLines: 3, onChanged: (value) => _description = value),
-
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: _handleSaveTask,
             child: Text('Save Task', style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF7b68ee),
-                alignment: Alignment.center
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF7b68ee), alignment: Alignment.center),
           ),
         ],
       ),
@@ -191,20 +194,11 @@ class _AddTaskFormState extends State<AddTaskForm> {
           labelStyle: TextStyle(color: Color(0xFF7b68ee)),
           border: OutlineInputBorder(),
           prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF7b68ee)),
-          ),
+          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF7b68ee))),
         ),
         maxLines: maxLines,
         onChanged: onChanged,
-        validator: isRequired
-            ? (value) {
-          if (value == null || value.isEmpty) {
-            return '$label is required';
-          }
-          return null;
-        }
-            : null,
+        validator: isRequired ? (value) => value == null || value.isEmpty ? '$label is required' : null : null,
       ),
     );
   }
@@ -218,12 +212,8 @@ class _AddTaskFormState extends State<AddTaskForm> {
           labelStyle: TextStyle(color: Color(0xFF7b68ee)),
           border: OutlineInputBorder(),
           prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF7b68ee)),
-          ),
-          errorText: isRequired && currentValue == 'None'
-              ? '$label is required'
-              : null,
+          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF7b68ee))),
+          errorText: isRequired && currentValue == 'None' ? '$label is required' : null,
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(

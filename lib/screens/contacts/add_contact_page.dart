@@ -2,13 +2,21 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
-Future<void> _saveContact(Map<String, dynamic> contact) async {
-  final prefs = await SharedPreferences.getInstance();
-  final contactsJson = prefs.getStringList('contacts') ?? [];
-  contactsJson.add(json.encode(contact));
-  await prefs.setStringList('contacts', contactsJson);
+Future<void> _saveContact(Map<String, dynamic> contactData) async {
+  const url = 'http://192.168.29.105/save_contact.php'; // Replace with your PHP URL
+  final response = await http.post(
+    Uri.parse(url),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: json.encode(contactData),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to save contact');
+  }
 }
 
 class AddContactPage extends StatelessWidget {
@@ -79,6 +87,8 @@ class _AddContactFormState extends State<AddContactForm> {
   late String _contactOwner;
   String _leadSource = 'None';
   String _salutation = 'None';
+  String _firstName = '';
+  String _lastName = '';
   String _title = '';
   String _department = '';
   String _mobile = '';
@@ -154,8 +164,8 @@ class _AddContactFormState extends State<AddContactForm> {
         'contact_owner': _contactOwner,
         'lead_source': _leadSource,
         'salutation': _salutation,
-        'first_name': widget.firstName,
-        'last_name': widget.lastName,
+        'first_name': _firstName,
+        'last_name': _lastName,
         'account_name': _accountName,
         'vendor_name': _vendorName,
         'title': _title,
@@ -177,6 +187,7 @@ class _AddContactFormState extends State<AddContactForm> {
         'description': _description,
         'photo': _imageFile?.path ?? '',
         'email_opt_out': _emailOptOut ? '1' : '0',
+        'reporting_to': _reportingTo,
       };
 
       await _saveContact(contactData);
@@ -231,8 +242,8 @@ class _AddContactFormState extends State<AddContactForm> {
               _salutation = newValue!;
             });
           }),
-          buildTextField('First Name', Icons.person, isRequired: true, onChanged: (value) {}),
-          buildTextField('Last Name', Icons.person, isRequired: true, onChanged: (value) {}),
+          buildTextField('First Name', Icons.person, isRequired: true, onChanged: (value) => _firstName = value),
+          buildTextField('Last Name', Icons.person, isRequired: true, onChanged: (value) => _lastName = value),
           buildTextField('Account Name', Icons.business, onChanged: (value) => _accountName = value),
           buildTextField('Vendor Name', Icons.business, isRequired: true,onChanged: (value) => _vendorName = value),
           buildTextField('Title', Icons.work, onChanged: (value) => _title = value),
@@ -291,8 +302,8 @@ class _AddContactFormState extends State<AddContactForm> {
             onPressed: _handleSaveContact,
             child: Text('Save Contact', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF7b68ee),
-              alignment: Alignment.center
+                backgroundColor: Color(0xFF7b68ee),
+                alignment: Alignment.center
             ),
           ),
         ],

@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../../constants.dart';
 import 'add_task_page.dart';
 
 class TaskPage extends StatefulWidget {
@@ -29,22 +29,53 @@ class _TaskPageState extends State<TaskPage> {
   }
 
   Future<void> _fetchTasks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final tasksJson = prefs.getStringList('tasks') ?? [];
-    setState(() {
-      _tasks = tasksJson.map((jsonStr) => json.decode(jsonStr) as Map<String, dynamic>).toList();
-    });
+    try {
+      final response = await http.get(Uri.parse(getTasksUrl));
+
+      if (response.statusCode == 200) {
+        print('Response: ${response.body}');
+        final List<dynamic> tasksJson = json.decode(response.body);
+
+        setState(() {
+          _tasks = tasksJson.cast<Map<String, dynamic>>();
+        });
+
+        if (_tasks.isEmpty) {
+          print('No tasks found');
+        }
+      } else {
+        print('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching tasks: $e'); // Will display any connection or parsing errors
+    }
   }
 
-  Future<void> _deleteTask(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    final tasksJson = prefs.getStringList('tasks') ?? [];
-    tasksJson.removeAt(index); // Remove the task from the list
-    await prefs.setStringList('tasks', tasksJson); // Save updated list
+  //Future<void> _deleteTask(int id) async {
+  //     try {
+  //       final response = await http.post(
+  //         Uri.parse(deleteTaskUrl),
+  //       body: json.encode({'id': id}),
+  //       headers: {'Content-Type': 'application/json'},
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       setState(() {
+  //         _tasks.removeWhere((task) => task['id'] == id);
+  //       });
+  //     } else {
+  //       print('Failed to delete task');
+  //     }
+  //   } catch (e) {
+  //     print('Error deleting task: $e');
+  //   }
+  // }
 
-    setState(() {
-      _tasks.removeAt(index); // Update UI
-    });
+  Future<void> _showTaskDetails(Map<String, dynamic> task) async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => TaskDetailSheet(task: task),
+    );
   }
 
   @override
@@ -104,15 +135,14 @@ class _TaskPageState extends State<TaskPage> {
                 Expanded(
                   child: ListTile(
                     contentPadding: EdgeInsets.all(16),
-                    title: Text('${task['first_name']} ${task['last_name']}'),
+                    title: Text(task['task_owner']),
                     subtitle: Text(task['subject'] ?? ''),
+                    leading: CircleAvatar(
+                      child: Icon(Icons.task, size: 40, color: Colors.white),
+                      backgroundColor: Color(0xFF7b68ee),
+                    ),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TaskDetailPage(task: task),
-                        ),
-                      );
+                      _showTaskDetails(task);
                     },
                   ),
                 ),
@@ -138,7 +168,7 @@ class _TaskPageState extends State<TaskPage> {
                     );
 
                     if (shouldDelete) {
-                      _deleteTask(index);
+                      //_deleteTask(index);
                     }
                   },
                 ),
@@ -151,30 +181,18 @@ class _TaskPageState extends State<TaskPage> {
   }
 }
 
-class TaskDetailPage extends StatelessWidget {
+class TaskDetailSheet extends StatelessWidget {
   final Map<String, dynamic> task;
 
-  TaskDetailPage({required this.task});
+  TaskDetailSheet({required this.task});
 
+  
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-        iconTheme: IconThemeData(
-          color: Colors.white,
-        ),
-        title: Text('${task['first_name'] ?? 'Unknown'} ${task['last_name'] ?? 'Unknown'}', style: TextStyle(color: Colors.white),),
-        backgroundColor: Color(0xFF7b68ee),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ListView(
+        children: [
             _buildDetailRow('Subject', task['subject'] ?? 'N/A'),
             _buildDetailRow('Due Date', task['due_date'] ?? 'N/A'),
             _buildDetailRow('Contact', task['contact'] ?? 'N/A'),
@@ -188,8 +206,7 @@ class TaskDetailPage extends StatelessWidget {
 
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildDetailRow(String label, String value) {

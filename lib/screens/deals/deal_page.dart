@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../../constants.dart';
 import 'add_deals_page.dart';
 
 class DealPage extends StatefulWidget {
@@ -28,22 +29,53 @@ class _DealPageState extends State<DealPage> {
   }
 
   Future<void> _fetchDeals() async {
-    final prefs = await SharedPreferences.getInstance();
-    final dealsJson = prefs.getStringList('deals') ?? [];
-    setState(() {
-      _deals = dealsJson.map((jsonStr) => json.decode(jsonStr) as Map<String, dynamic>).toList();
-    });
+    try {
+      final response = await http.get(Uri.parse(getDealsUrl));
+
+      if (response.statusCode == 200) {
+        print('Response: ${response.body}');
+        final List<dynamic> dealsJson = json.decode(response.body);
+
+        setState(() {
+          _deals = dealsJson.cast<Map<String, dynamic>>();
+        });
+
+        if (_deals.isEmpty) {
+          print('No deals found');
+        }
+      } else {
+        print('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching deals: $e'); // Will display any connection or parsing errors
+    }
   }
 
-  Future<void> _deleteDeal(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    final dealsJson = prefs.getStringList('deals') ?? [];
-    dealsJson.removeAt(index); // Remove the deal from the list
-    await prefs.setStringList('deals', dealsJson); // Save updated list
+  Future<void> _deleteDeal(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse(deleteDealUrl),
+        body: json.encode({'id': id}),
+        headers: {'Content-Type': 'application/json'},
+      );
 
-    setState(() {
-      _deals.removeAt(index); // Update UI
-    });
+      if (response.statusCode == 200) {
+        setState(() {
+          _deals.removeWhere((deal) => deal['id'] == id);
+        });
+      } else {
+        print('Failed to delete deal');
+      }
+    } catch (e) {
+      print('Error deleting deal: $e');
+    }
+  }
+
+  Future<void> _showDealDetails(Map<String, dynamic> deal) async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => DealDetailSheet(deal: deal),
+    );
   }
 
   @override
@@ -103,15 +135,10 @@ class _DealPageState extends State<DealPage> {
                 Expanded(
                   child: ListTile(
                     contentPadding: EdgeInsets.all(16),
-                    title: Text('${deal['first_name']} ${deal['last_name']}'),
-                    subtitle: Text(deal['deal_name'] ?? 'deal Name'),
+                    title: Text('${deal['first_name'] ?? ''} ${deal['last_name'] ?? ''}'),
+                    subtitle: Text(deal['deal_name'] ?? 'Deal Name'),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DealDetailPage(deal: deal),
-                        ),
-                      );
+                      _showDealDetails(deal);
                     },
                   ),
                 ),
@@ -137,7 +164,7 @@ class _DealPageState extends State<DealPage> {
                     );
 
                     if (shouldDelete) {
-                      _deleteDeal(index);
+                      _deleteDeal(deal['id']); // Pass the deal ID instead of index
                     }
                   },
                 ),
@@ -150,10 +177,10 @@ class _DealPageState extends State<DealPage> {
   }
 }
 
-class DealDetailPage extends StatelessWidget {
+class DealDetailSheet extends StatelessWidget {
   final Map<String, dynamic> deal;
 
-  DealDetailPage({required this.deal});
+  DealDetailSheet({required this.deal});
 
   @override
   Widget build(BuildContext context) {
@@ -167,8 +194,7 @@ class DealDetailPage extends StatelessWidget {
         iconTheme: IconThemeData(
           color: Colors.white,
         ),
-        title: Text('${deal['first_name'] ?? 'Unknown'} ${deal['last_name'] ??
-            'Unknown'}',
+        title: Text('${deal['first_name'] ?? 'Unknown'} ${deal['last_name'] ?? 'Unknown'}',
             style: TextStyle(color: Colors.white)),
         backgroundColor: Color(0xFF7b68ee),
       ),
@@ -176,23 +202,18 @@ class DealDetailPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // Deal Information Section
             _buildDetailRow('Deal Name', deal['deal_name'] ?? 'N/A'),
             _buildDetailRow('Account Name', deal['account_name'] ?? 'N/A'),
-            _buildDetailRow('Amount', deal['amount'] ?? 'N/A'),
+            _buildDetailRow('Amount', deal['amount']?.toString() ?? 'N/A'),
             _buildDetailRow('Closing Date', deal['closing_date'] ?? 'N/A'),
             _buildDetailRow('Stage', deal['stage'] ?? 'N/A'),
             _buildDetailRow('Type', deal['type'] ?? 'N/A'),
             _buildDetailRow('Next Step', deal['next_step'] ?? 'N/A'),
-            _buildDetailRow('Probability', deal['probability'] ?? 'N/A'),
+            _buildDetailRow('Probability', deal['probability']?.toString() ?? 'N/A'),
             _buildDetailRow('Lead Source', deal['lead_source'] ?? 'N/A'),
-            _buildDetailRow('Expected Revenue',
-                deal['expected_revenue'].toString() ?? 'N/A'),
+            _buildDetailRow('Expected Revenue', deal['expected_revenue']?.toString() ?? 'N/A'),
             _buildDetailRow('Contact Name', deal['contact_name'] ?? 'N/A'),
-            _buildDetailRow(
-                'Campaign Source', deal['campaignSource']?.toString() ?? 'N/A'),
-
-            // Additional Information
+            _buildDetailRow('Campaign Source', deal['campaign_source'] ?? 'N/A'),
             _buildDetailRow('Description', deal['description'] ?? 'N/A'),
           ],
         ),

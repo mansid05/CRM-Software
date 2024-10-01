@@ -1,13 +1,20 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
-Future<void> _saveMeeting(Map<String, dynamic> meeting) async {
-  final prefs = await SharedPreferences.getInstance();
-  final meetingsJson = prefs.getStringList('meetings') ?? [];
-  meetingsJson.add(json.encode(meeting));
-  await prefs.setStringList('meetings', meetingsJson);
+Future<void> _saveMeeting(Map<String, dynamic> meetingData) async {
+  const url = 'http://192.168.29.105/save_meeting.php'; // Replace with your PHP URL
+  final response = await http.post(
+    Uri.parse(url),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: json.encode(meetingData),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to save meeting');
+  }
 }
 
 class AddMeetingPage extends StatelessWidget {

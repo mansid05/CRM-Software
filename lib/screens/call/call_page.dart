@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../../constants.dart';
 import 'add_call_page.dart';
 
 class CallPage extends StatefulWidget {
@@ -19,24 +20,59 @@ class _CallPageState extends State<CallPage> {
   }
 
   Future<void> _fetchCalls() async {
-    final prefs = await SharedPreferences.getInstance();
-    final callsJson = prefs.getStringList('calls') ?? [];
-    setState(() {
-      _calls = callsJson.map((jsonStr) => json.decode(jsonStr) as Map<String, dynamic>).toList();
-    });
+    try {
+      final response = await http.get(Uri.parse(getCallsUrl));
+
+      if (response.statusCode == 200) {
+        print('Response: ${response.body}'); // Debugging the response
+        final List<dynamic> callsJson = json.decode(response.body);
+
+        setState(() {
+          _calls = callsJson.cast<Map<String, dynamic>>();
+        });
+
+        if (_calls.isEmpty) {
+          print('No calls found');
+        }
+      } else {
+        print('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching calls: $e');
+    }
   }
 
-  Future<void> _deleteCall(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    final callsJson = prefs.getStringList('calls') ?? [];
-    callsJson.removeAt(index); // Remove the call from the list
-    await prefs.setStringList('calls', callsJson); // Save updated list
+  //Future<void> _deleteCall(int id) async {
+  //     try {
+  //       final response = await http.post(
+  //         Uri.parse(deleteCallUrl),
+  //body: json.encode({'id': id}),
+  //headers: {'Content-Type': 'application/json'},
+  //);
 
-    setState(() {
-      _calls.removeAt(index); // Update UI
-    });
+  //print('Delete response status: ${response.statusCode}');
+  //print('Delete response body: ${response.body}');
+
+  //if (response.statusCode == 200) {
+  //final jsonResponse = json.decode(response.body);
+  //if (jsonResponse['status'] == 'success') {
+  //setState(() {
+  // _calls.removeWhere((call) => call['id'] == id);
+  //});
+  // } else {
+  // print('Failed to delete call: ${jsonResponse['message']}');
+  // }
+  // } else {
+  // print('Failed to delete call');
+  // }
+  //}
+
+  Future<void> _showCallDetails(Map<String, dynamic> call) async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => CallDetailSheet(call: call),
+    );
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,13 +128,12 @@ class _CallPageState extends State<CallPage> {
                     contentPadding: EdgeInsets.all(16),
                     title: Text('Outgoing call to ${call['contact']}'),
                     subtitle: Text(call['call_start_time'] ?? ''),
+                    leading: CircleAvatar(
+                      child: Icon(Icons.call_rounded, size: 40, color: Colors.white),
+                      backgroundColor: Color(0xFF7b68ee),
+                    ),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CallDetailPage(call: call),
-                        ),
-                      );
+                      _showCallDetails(call);
                     },
                   ),
                 ),
@@ -124,7 +159,7 @@ class _CallPageState extends State<CallPage> {
                     );
 
                     if (shouldDelete) {
-                      _deleteCall(index);
+                      //_deleteCall(index);
                     }
                   },
                 ),
@@ -137,42 +172,28 @@ class _CallPageState extends State<CallPage> {
   }
 }
 
-class CallDetailPage extends StatelessWidget {
+class CallDetailSheet extends StatelessWidget {
   final Map<String, dynamic> call;
 
-  CallDetailPage({required this.call});
+  CallDetailSheet({required this.call});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-        iconTheme: IconThemeData(
-          color: Colors.white,
-        ),
-        title: Text('${call['contact'] ?? 'Unknown'}', style: TextStyle(color: Colors.white),),
-        backgroundColor: Color(0xFF7b68ee),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            _buildDetailRow('Call Type', call['call_type'] ?? 'N/A'),
-            _buildDetailRow('Outgoing Call Status', call['outgoing_call_status'] ?? 'N/A'),
-            _buildDetailRow('Call Start Time', call['call_start_time'] ?? 'N/A'),
-            _buildDetailRow('Call Duration', call['call_duration'] ?? 'N/A'),
-            _buildDetailRow('Subject', call['subject'] ?? 'N/A'),
-            _buildDetailRow('Account', call['account'] ?? 'N/A'),
-            _buildDetailRow('Call Purpose', call['call_purpose'] ?? 'N/A'),
-            _buildDetailRow('Call Agenda', call['call_agenda'] ?? 'N/A'),
-            _buildDetailRow('Call Result', call['call_result'] ?? 'N/A'),
-            _buildDetailRow('Description', call['description'] ?? 'N/A'),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ListView(
+        children: [
+          _buildDetailRow('Call Type', call['call_type'] ?? 'N/A'),
+          _buildDetailRow('Outgoing Call Status', call['outgoing_call_status'] ?? 'N/A'),
+          _buildDetailRow('Call Start Time', call['call_start_time'] ?? 'N/A'),
+          _buildDetailRow('Call Duration', call['call_duration'] ?? 'N/A'),
+          _buildDetailRow('Subject', call['subject'] ?? 'N/A'),
+          _buildDetailRow('Account', call['account'] ?? 'N/A'),
+          _buildDetailRow('Call Purpose', call['call_purpose'] ?? 'N/A'),
+          _buildDetailRow('Call Agenda', call['call_agenda'] ?? 'N/A'),
+          _buildDetailRow('Call Result', call['call_result'] ?? 'N/A'),
+          _buildDetailRow('Description', call['description'] ?? 'N/A'),
+        ],
       ),
     );
   }

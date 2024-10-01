@@ -1,12 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
-Future<void> _saveAccount(Map<String, dynamic> account) async {
-  final prefs = await SharedPreferences.getInstance();
-  final accountsJson = prefs.getStringList('accounts') ?? [];
-  accountsJson.add(json.encode(account));
-  await prefs.setStringList('accounts', accountsJson);
+Future<void> _saveAccount(Map<String, dynamic> accountData) async {
+  final url = 'http://192.168.29.164/save_account.php'; // Replace with your PHP URL
+  final response = await http.post(
+    Uri.parse(url),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: json.encode(accountData),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to save account');
+  }
 }
 
 class AddAccountPage extends StatelessWidget {
@@ -67,6 +75,8 @@ class AddAccountForm extends StatefulWidget {
     required this.email,
   }) : super(key: key);
 
+
+
   @override
   _AddAccountFormState createState() => _AddAccountFormState();
 }
@@ -76,11 +86,17 @@ class _AddAccountFormState extends State<AddAccountForm> {
   late String _accountOwner;
   String _phone = '';
   String _accountName = 'None';
+  String _accountSite = '';
+  String _parentAccount = 'None';
+  String _website = '';
+  String _employees = 'None';
+  String _sicCode = '';
+  String _tickerSymbol = '';
+  String _fax = '';
   String _ownership = 'None';
   String _industry = 'None';
   String _accountType = 'None';
   String _annualRevenue = '';
-  String _skypeId = '';
   String _billingStreet = '';
   String _billingCity = '';
   String _billingState = '';
@@ -94,7 +110,6 @@ class _AddAccountFormState extends State<AddAccountForm> {
   String _accountNumber = '';
   String _rating = 'None';
   String _description = '';
-  String _employees = '';
 
   @override
   void initState() {
@@ -113,11 +128,15 @@ class _AddAccountFormState extends State<AddAccountForm> {
         'last_name': widget.lastName,
         'email': widget.email,
         'phone': _phone,
-        'account_type': _accountType,
+        'account_site': _accountSite,
+        'parent_account': _parentAccount,
+        'website': _website,
+        'sic_code': _sicCode,
+        'ticker_Symbol': _tickerSymbol,
+        'fax': _fax,
         'ownership': _ownership,
         'industry': _industry,
         'annual_revenue': _annualRevenue,
-        'skype_id': _skypeId,
         'billing_street': _billingStreet,
         'billing_city': _billingCity,
         'billing_state': _billingState,
@@ -179,12 +198,12 @@ class _AddAccountFormState extends State<AddAccountForm> {
           buildTextField('Account Name', Icons.account_box, isRequired: true,
               onChanged: (value) => _accountName = value),
           buildTextField('Phone', Icons.phone, isRequired: true, onChanged: (value) => _phone = value),
-          buildTextField('Account Site', Icons.accessibility, onChanged: (value) {}),
-          buildTextField('Fax', Icons.print, onChanged: (value) {}),
-          buildTextField('Parent Account', Icons.account_box, onChanged: (value) {}),
-          buildTextField('Website', Icons.web, onChanged: (value) {}),
+          buildTextField('Account Site', Icons.accessibility, onChanged: (value) => _accountSite = value),
+          buildTextField('Fax', Icons.print, onChanged: (value) => _fax = value),
+          buildTextField('Parent Account', Icons.account_box, onChanged: (value) => _parentAccount = value),
+          buildTextField('Website', Icons.web, onChanged: (value) => _website = value),
           buildTextField('Account Number', Icons.numbers, isRequired: true, onChanged: (value) => _accountNumber = value),
-          buildTextField('Ticker Symbol', Icons.email, onChanged: (value) {}),
+          buildTextField('Ticker Symbol', Icons.email, onChanged: (value) => _tickerSymbol = value),
           buildDropdownField('Account Type', ['None', 'Analyst', 'Competitor', 'Customer', 'Distributor', 'Integrator', 'Investor', 'Other', 'Partner', 'Press', 'Prospect', 'Reseller', 'Supplier', 'Vendor'], Icons.account_box, _accountType, (newValue) {
             setState(() {
               _accountType = newValue!;
@@ -222,7 +241,7 @@ class _AddAccountFormState extends State<AddAccountForm> {
               onChanged: (value) => _employees = value),
           buildTextField('Annual Revenue', Icons.attach_money, isRequired: true,
               onChanged: (value) => _annualRevenue = value),
-          buildTextField('SIC Code', Icons.code, onChanged: (value) {}),
+          buildTextField('SIC Code', Icons.code, onChanged: (value) => _sicCode = value),
           SizedBox(height: 20),
 
           // ADDRESS INFORMATION Section

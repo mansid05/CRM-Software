@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
+import '../../constants.dart';
+
 Future<void> _saveLead(Map<String, dynamic> leadData) async {
-  final url = 'http://192.168.29.164/save_lead.php'; // Replace with your PHP URL
   final response = await http.post(
-    Uri.parse(url),
+    Uri.parse(saveLeadUrl),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },
@@ -85,6 +86,8 @@ class _AddLeadFormState extends State<AddLeadForm> {
   final _formKey = GlobalKey<FormState>();
   File? _imageFile;
   late String _leadOwner;
+  String _firstName = '';
+  String _lastName = '';
   String _company = '';
   String _salutation = 'None';
   String _title = '';
@@ -158,8 +161,8 @@ class _AddLeadFormState extends State<AddLeadForm> {
         'lead_owner': _leadOwner,
         'salutation': _salutation,
         'company': _company,
-        'first_name': widget.firstName,
-        'last_name': widget.lastName,
+        'first_name': _firstName,
+        'last_name': _lastName,
         'title': _title,
         'email': widget.email,
         'mobile': _mobile,
@@ -227,8 +230,8 @@ class _AddLeadFormState extends State<AddLeadForm> {
               _salutation = newValue!;
             });
           }),
-          buildTextField('First Name', Icons.person, isRequired: true, onChanged: (value) {}),
-          buildTextField('Last Name', Icons.person, isRequired: true, onChanged: (value) {}),
+          buildTextField('First Name', Icons.person, isRequired: true, onChanged: (value) => _firstName = value),
+          buildTextField('Last Name', Icons.person, isRequired: true, onChanged: (value) => _lastName = value),
           buildTextField('Title', Icons.work, onChanged: (value) => _title = value),
           buildTextField('Email', Icons.email, isRequired: true, onChanged: (value) {}),
           buildTextField('Phone', Icons.phone, onChanged: (value) {}),

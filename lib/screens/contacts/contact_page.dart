@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../../constants.dart';
 import 'add_contact_page.dart';
 
 class ContactPage extends StatefulWidget {
@@ -29,22 +30,53 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Future<void> _fetchContacts() async {
-    final prefs = await SharedPreferences.getInstance();
-    final contactsJson = prefs.getStringList('contacts') ?? [];
-    setState(() {
-      _contacts = contactsJson.map((jsonStr) => json.decode(jsonStr) as Map<String, dynamic>).toList();
-    });
+    try {
+      final response = await http.get(Uri.parse(getContactsUrl));
+
+      if (response.statusCode == 200) {
+        print('Response: ${response.body}');
+        final List<dynamic> contactsJson = json.decode(response.body);
+
+        setState(() {
+          _contacts = contactsJson.cast<Map<String, dynamic>>();
+        });
+
+        if (_contacts.isEmpty) {
+          print('No contacts found');
+        }
+      } else {
+        print('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching contacts: $e');  // Will display any connection or parsing errors
+    }
   }
 
-  Future<void> _deleteContact(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    final contactsJson = prefs.getStringList('contacts') ?? [];
-    contactsJson.removeAt(index); // Remove the contact from the list
-    await prefs.setStringList('contacts', contactsJson); // Save updated list
+  //Future<void> _deleteContact(int id) async {
+  //     try {
+  //       final response = await http.post(
+  //         Uri.parse(deleteContactUrl),
+  //       body: json.encode({'id': id}),
+  //       headers: {'Content-Type': 'application/json'},
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       setState(() {
+  //         _contacts.removeWhere((contact) => contact['id'] == id);
+  //       });
+  //     } else {
+  //       print('Failed to delete contact');
+  //     }
+  //   } catch (e) {
+  //     print('Error deleting contact: $e');
+  //   }
+  // }
 
-    setState(() {
-      _contacts.removeAt(index); // Update UI
-    });
+  Future<void> _showContactDetails(Map<String, dynamic> contact) async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => ContactDetailSheet(contact: contact),
+    );
   }
 
   @override
@@ -116,12 +148,7 @@ class _ContactPageState extends State<ContactPage> {
                       foregroundColor: Colors.white,
                     ),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ContactDetailPage(contact: contact),
-                        ),
-                      );
+                      _showContactDetails(contact);
                     },
                   ),
                 ),
@@ -147,7 +174,7 @@ class _ContactPageState extends State<ContactPage> {
                     );
 
                     if (shouldDelete) {
-                      _deleteContact(index);
+                      //_deleteContact(contact['id']);
                     }
                   },
                 ),
@@ -160,10 +187,10 @@ class _ContactPageState extends State<ContactPage> {
   }
 }
 
-class ContactDetailPage extends StatelessWidget {
+class ContactDetailSheet extends StatelessWidget {
   final Map<String, dynamic> contact;
 
-  ContactDetailPage({required this.contact});
+  ContactDetailSheet({required this.contact});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +204,7 @@ class ContactDetailPage extends StatelessWidget {
         iconTheme: IconThemeData(
           color: Colors.white,
         ),
-        title: Text('${contact['first_name'] ?? 'Unknown'} ${contact['last_name'] ?? 'Unknown'}', style: TextStyle(color: Colors.white),),
+        title: Text('${contact['first_name'] ?? 'Unknown'} ${contact['last_name'] ?? 'Unknown'}', style: TextStyle(color: Colors.white)),
         backgroundColor: Color(0xFF7b68ee),
       ),
       body: Padding(
