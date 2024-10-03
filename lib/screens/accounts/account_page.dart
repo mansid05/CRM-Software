@@ -8,11 +8,13 @@ class AccountPage extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String email;
+  final bool forSelection;
 
   AccountPage({
     required this.firstName,
     required this.lastName,
     required this.email,
+    this.forSelection = false,
   });
 
   @override
@@ -148,7 +150,13 @@ class _AccountPageState extends State<AccountPage> {
                       backgroundColor: Color(0xFF7b68ee),
                     ),
                     onTap: () {
-                      _showAccountDetails(account);
+                      if (widget.forSelection) {
+                        // If we are selecting an account (from AddContactForm), return the selected account
+                        Navigator.pop(context, account);
+                      } else {
+                        // If we are not selecting an account, show the account details
+                        _showAccountDetails(account);
+                      }
                     },
                   ),
                 ),

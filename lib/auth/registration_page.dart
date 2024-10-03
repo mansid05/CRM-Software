@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../constants.dart';
 import 'login_page.dart';
 
 class RegistrationPage extends StatefulWidget {
@@ -41,7 +42,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             SnackBar(content: Text("Passwords don't match")));
       } else {
         try {
-          var url = Uri.parse('http://192.168.29.164/register.php'); // Replace with your server URL
+          var url = Uri.parse(registerUrl); // Using the constant loginUrl
           var response = await http.post(url, body: {
             'firstName': firstName,
             'lastName': lastName,

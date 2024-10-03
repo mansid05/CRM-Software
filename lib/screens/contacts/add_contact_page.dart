@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
+import '../accounts/account_page.dart';
+
 Future<void> _saveContact(Map<String, dynamic> contactData) async {
   const url = 'http://192.168.29.105/save_contact.php'; // Replace with your PHP URL
   final response = await http.post(
@@ -244,7 +246,33 @@ class _AddContactFormState extends State<AddContactForm> {
           }),
           buildTextField('First Name', Icons.person, isRequired: true, onChanged: (value) => _firstName = value),
           buildTextField('Last Name', Icons.person, isRequired: true, onChanged: (value) => _lastName = value),
-          buildTextField('Account Name', Icons.business, onChanged: (value) => _accountName = value),
+          buildTextField(
+            'Account Name',
+            Icons.business,
+            isRequired: true,
+            onChanged: (value) => _accountName = value,
+            onTap: () async {
+              // Navigate to AccountPage and wait for a selected account to be returned
+              final selectedAccountName = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AccountPage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                    email: widget.email,
+                    forSelection: true, // Set forSelection to true for account selection
+                  ),
+                ),
+              );
+
+              // If an account is selected, update the _accountName field
+              if (selectedAccountName != null) {
+                setState(() {
+                  _accountName = selectedAccountName; // Update field with the selected account name
+                });
+              }
+            },
+          ),
           buildTextField('Vendor Name', Icons.business, isRequired: true,onChanged: (value) => _vendorName = value),
           buildTextField('Title', Icons.work, onChanged: (value) => _title = value),
           buildTextField('Email', Icons.email, isRequired: true, onChanged: (value) {}),
@@ -311,29 +339,36 @@ class _AddContactFormState extends State<AddContactForm> {
     );
   }
 
-  Widget buildTextField(String label, IconData icon, {bool isRequired = false, int maxLines = 1, required ValueChanged<String> onChanged}) {
+  Widget buildTextField(String label, IconData icon, {bool isRequired = false, int maxLines = 1, required ValueChanged<String> onChanged, VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        decoration: InputDecoration(
-          labelText: isRequired ? '$label *' : label,
-          labelStyle: TextStyle(color: Color(0xFF7b68ee)),
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF7b68ee)),
+      child: GestureDetector(
+        onTap: onTap,  // This handles taps for navigation to the AccountPage
+        child: AbsorbPointer(
+          child: TextFormField(
+            decoration: InputDecoration(
+              labelText: isRequired ? '$label *' : label,
+              labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF7b68ee)),
+              ),
+            ),
+            maxLines: maxLines,
+            onChanged: onChanged,
+            validator: isRequired
+                ? (value) {
+              if (value == null || value.isEmpty) {
+                return '$label is required';
+              }
+              return null;
+            }
+                : null,
+            // This line ensures the selected account name is shown in the TextFormField
+            initialValue: _accountName.isNotEmpty ? _accountName : null,
           ),
         ),
-        maxLines: maxLines,
-        onChanged: onChanged,
-        validator: isRequired
-            ? (value) {
-          if (value == null || value.isEmpty) {
-            return '$label is required';
-          }
-          return null;
-        }
-            : null,
       ),
     );
   }

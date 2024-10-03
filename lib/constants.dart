@@ -1,8 +1,10 @@
 // lib/constants.dart
 
-const String baseUrl = 'http://192.168.29.164'; // Your base URL
+const String baseUrl = 'http://192.168.1.34'; // Your base URL
 
 // API Endpoints
+const String registerUrl = '$baseUrl/register.php';
+const String loginUrl = '$baseUrl/login.php';
 
 const String saveAccountUrl = '$baseUrl/save_account.php';
 const String getAccountsUrl = '$baseUrl/get_accounts.php';
