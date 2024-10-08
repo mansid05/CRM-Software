@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:intl/intl.dart';
+import '../../constants.dart';
 import '../accounts/account_page.dart';
 
 Future<void> _saveContact(Map<String, dynamic> contactData) async {
-  const url = 'http://192.168.29.105/save_contact.php'; // Replace with your PHP URL
   final response = await http.post(
-    Uri.parse(url),
+    Uri.parse(saveContactUrl),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },
@@ -17,7 +17,7 @@ Future<void> _saveContact(Map<String, dynamic> contactData) async {
   );
 
   if (response.statusCode != 200) {
-    throw Exception('Failed to save contact');
+    throw Exception('Failed to save lead');
   }
 }
 
@@ -111,6 +111,7 @@ class _AddContactFormState extends State<AddContactForm> {
   String _dateOfBirth = '';
   String _reportingTo = '';
   bool _emailOptOut = false;
+  final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
   @override
   void initState() {
@@ -159,6 +160,20 @@ class _AddContactFormState extends State<AddContactForm> {
         );
       },
     );
+  }
+  Future<void> _selectDateOfBirth(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        _dateOfBirth = _dateFormat.format(pickedDate); // Format the selected date
+      });
+    }
   }
   Future<void> _handleSaveContact() async {
     if (_formKey.currentState?.validate() ?? false) {
@@ -253,7 +268,7 @@ class _AddContactFormState extends State<AddContactForm> {
             onChanged: (value) => _accountName = value,
             onTap: () async {
               // Navigate to AccountPage and wait for a selected account to be returned
-              final selectedAccountName = await Navigator.push(
+              final selectedAccount = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => AccountPage(
@@ -266,9 +281,9 @@ class _AddContactFormState extends State<AddContactForm> {
               );
 
               // If an account is selected, update the _accountName field
-              if (selectedAccountName != null) {
+              if (selectedAccount != null) {
                 setState(() {
-                  _accountName = selectedAccountName; // Update field with the selected account name
+                  _accountName = "${selectedAccount['first_name']} ${selectedAccount['last_name']}"; // Combine first and last names
                 });
               }
             },
@@ -282,7 +297,12 @@ class _AddContactFormState extends State<AddContactForm> {
           buildTextField('Other Phone', Icons.phone, onChanged: (value) {}),
           buildTextField('Fax', Icons.print, onChanged: (value) {}),
           buildTextField('Mobile', Icons.smartphone, isRequired: true, onChanged: (value) => _mobile = value),
-          buildTextField('Date of Birth', Icons.cake, onChanged: (value) => _dateOfBirth = value),
+          buildDatePickerField(
+            'Date of Birth',
+            Icons.calendar_today,
+            onTap: () => _selectDateOfBirth(context),
+            value: _dateOfBirth,
+          ),
           buildTextField('Assistant', Icons.person_add, onChanged: (value) {}),
           buildTextField('Asst Phone', Icons.phone_android, onChanged: (value) {}),
           buildSwitchField('Email Opt Out'),
@@ -340,11 +360,12 @@ class _AddContactFormState extends State<AddContactForm> {
   }
 
   Widget buildTextField(String label, IconData icon, {bool isRequired = false, int maxLines = 1, required ValueChanged<String> onChanged, VoidCallback? onTap}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: GestureDetector(
-        onTap: onTap,  // This handles taps for navigation to the AccountPage
-        child: AbsorbPointer(
+    return GestureDetector(
+      onTap: onTap, // If onTap is provided, it will be called
+      child: AbsorbPointer(
+        absorbing: onTap != null, // Prevent keyboard input if onTap is provided
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: TextFormField(
             decoration: InputDecoration(
               labelText: isRequired ? '$label *' : label,
@@ -365,13 +386,38 @@ class _AddContactFormState extends State<AddContactForm> {
               return null;
             }
                 : null,
-            // This line ensures the selected account name is shown in the TextFormField
-            initialValue: _accountName.isNotEmpty ? _accountName : null,
           ),
         ),
       ),
     );
   }
+
+
+  Widget buildDatePickerField(
+      String label,
+      IconData icon, {
+        required VoidCallback onTap,
+        required String value,
+      }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AbsorbPointer(
+        child: TextFormField(
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF7b68ee)),
+            ),
+          ),
+          controller: TextEditingController(text: value),
+        ),
+      ),
+    );
+  }
+
 
   Widget buildDropdownField(String label, List<String> items, IconData icon, String currentValue, ValueChanged<String?> onChanged, {bool isRequired = false}) {
     return Padding(

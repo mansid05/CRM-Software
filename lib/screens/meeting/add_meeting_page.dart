@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import '../../constants.dart';
 
 Future<void> _saveMeeting(Map<String, dynamic> meetingData) async {
-  const url = 'http://192.168.29.105/save_meeting.php'; // Replace with your PHP URL
   final response = await http.post(
-    Uri.parse(url),
+    Uri.parse(saveMeetingUrl),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },
@@ -13,7 +14,7 @@ Future<void> _saveMeeting(Map<String, dynamic> meetingData) async {
   );
 
   if (response.statusCode != 200) {
-    throw Exception('Failed to save meeting');
+    throw Exception('Failed to save lead');
   }
 }
 
@@ -127,6 +128,42 @@ class _AddMeetingFormState extends State<AddMeetingForm> {
     }
   }
 
+  Future<void> _selectDateTime(BuildContext context, String field) async {
+    DateTime? selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+
+    if (selectedDate != null) {
+      TimeOfDay? selectedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
+      );
+
+      if (selectedTime != null) {
+        DateTime combinedDateTime = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          selectedTime.hour,
+          selectedTime.minute,
+        );
+
+        String formattedDateTime = DateFormat('yyyy-MM-dd HH:mm').format(combinedDateTime);
+
+        setState(() {
+          if (field == 'from') {
+            _from = formattedDateTime;
+          } else if (field == 'to') {
+            _to = formattedDateTime;
+          }
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -143,8 +180,8 @@ class _AddMeetingFormState extends State<AddMeetingForm> {
           buildTextField('Title', Icons.title, isRequired: true, onChanged: (value) => _title = value),
           buildTextField('Location', Icons.location_city, onChanged: (value) => _location = value),
           buildSwitchField('All Day'),
-          buildTextField('From', Icons.calendar_month, isRequired: true, onChanged: (value) => _from = value),
-          buildTextField('To', Icons.calendar_month, isRequired: true, onChanged: (value) => _to = value),
+          buildDateTimeField('From', 'from'),
+          buildDateTimeField('To', 'to'),
           buildDropdownField('Host', [_host], Icons.person, _host, (newValue) {
             setState(() {
               _host = newValue!;
@@ -212,6 +249,37 @@ class _AddMeetingFormState extends State<AddMeetingForm> {
           return null;
         }
             : null,
+      ),
+    );
+  }
+
+  Widget buildDateTimeField(String label, String field, {bool isRequired = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: GestureDetector(
+        onTap: () => _selectDateTime(context, field),
+        child: AbsorbPointer(
+          child: TextFormField(
+            decoration: InputDecoration(
+              labelText: isRequired ? '$label *' : label,
+              labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.calendar_today, color: Color(0xFF7b68ee)),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF7b68ee)),
+              ),
+            ),
+            controller: TextEditingController(
+              text: field == 'from' ? _from : _to,
+            ),
+            validator: (value) {
+              if (isRequired && (value == null || value.isEmpty)) {
+                return '$label is required';
+              }
+              return null;
+            },
+          ),
+        ),
       ),
     );
   }

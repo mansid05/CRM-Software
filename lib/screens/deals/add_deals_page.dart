@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 import '../../constants.dart';
 
@@ -94,11 +95,27 @@ class _AddDealFormState extends State<AddDealForm> {
   String _contactName = '';
   String _campaignSource = '';
   String _description = '';
+  final DateFormat _dateFormat = DateFormat('dd-MM-yyyy');
 
   @override
   void initState() {
     super.initState();
     _dealOwner = '${widget.firstName} ${widget.lastName}';
+  }
+
+  Future<void> _selectClosingDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        _closingDate = _dateFormat.format(pickedDate); // Format the selected date
+      });
+    }
   }
 
   Future<void> _handleSaveDeal() async {
@@ -165,8 +182,12 @@ class _AddDealFormState extends State<AddDealForm> {
               onChanged: (value) => _amount = value),
           buildTextField('Deal Name', Icons.monetization_on,
               isRequired: true, onChanged: (value) => _dealName = value),
-          buildTextField('Closing Date', Icons.calendar_month,
-              isRequired: true, onChanged: (value) => _closingDate = value),
+          buildDatePickerField(
+            'Due Date',
+            Icons.calendar_today,
+            onTap: () => _selectClosingDate(context),
+            value: _closingDate,
+          ),
           buildTextField('Account Name', Icons.account_box,
               isRequired: true, onChanged: (value) => _accountName = value),
           buildDropdownField(
@@ -288,6 +309,32 @@ class _AddDealFormState extends State<AddDealForm> {
           return null;
         }
             : null,
+      ),
+    );
+  }
+
+  Widget buildDatePickerField(
+      String label,
+      IconData icon, {
+        required VoidCallback onTap,
+        required String value,
+        bool isRequired = true,
+      }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AbsorbPointer(
+        child: TextFormField(
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF7b68ee)),
+            ),
+          ),
+          controller: TextEditingController(text: value),
+        ),
       ),
     );
   }

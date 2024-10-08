@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import '../../constants.dart';
+
 Future<void> _saveCall(Map<String, dynamic> callData) async {
-  final url = 'http://192.168.29.164/save_call.php'; // Replace with your PHP URL
   final response = await http.post(
-    Uri.parse(url),
+    Uri.parse(saveCallUrl),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },
@@ -14,7 +15,7 @@ Future<void> _saveCall(Map<String, dynamic> callData) async {
   );
 
   if (response.statusCode != 200) {
-    throw Exception('Failed to save call');
+    throw Exception('Failed to save lead');
   }
 }
 

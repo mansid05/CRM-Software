@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../../constants.dart';
+
 Future<void> _saveAccount(Map<String, dynamic> accountData) async {
-  final url = 'http://192.168.29.164/save_account.php'; // Replace with your PHP URL
   final response = await http.post(
-    Uri.parse(url),
+    Uri.parse(saveAccountUrl),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },
@@ -13,7 +14,7 @@ Future<void> _saveAccount(Map<String, dynamic> accountData) async {
   );
 
   if (response.statusCode != 200) {
-    throw Exception('Failed to save account');
+    throw Exception('Failed to save lead');
   }
 }
 

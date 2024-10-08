@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crm_primine/screens/tasks/add_task_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/login_page.dart';
@@ -264,6 +265,13 @@ class DashboardPage extends StatelessWidget {
                   lastName: lastName,
                   email: email,
                 ),
+              ),
+            );
+          } else if (title == 'Create Task') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddTaskPage(firstName: '', lastName: '', email: '',),
               ),
             );
           } else {

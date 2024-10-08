@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+
+import '../../constants.dart';
 
 Future<void> _saveTask(Map<String, dynamic> taskData) async {
-  const url = 'http://192.168.29.164/save_task.php'; // Replace with your PHP URL
   final response = await http.post(
-    Uri.parse(url),
+    Uri.parse(saveTaskUrl),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },
@@ -13,7 +15,7 @@ Future<void> _saveTask(Map<String, dynamic> taskData) async {
   );
 
   if (response.statusCode != 200) {
-    throw Exception('Failed to save task');
+    throw Exception('Failed to save lead');
   }
 }
 
@@ -92,13 +94,27 @@ class _AddTaskFormState extends State<AddTaskForm> {
   String _remainder = '';
   String _repeat = 'None'; // Setting default repeat value
   String _description = '';
+  final DateFormat _dateFormat = DateFormat('dd-MM-yyyy');
 
   @override
   void initState() {
     super.initState();
     _taskOwner = '${widget.firstName} ${widget.lastName}';
   }
+  Future<void> _selectDueDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
 
+    if (pickedDate != null) {
+      setState(() {
+        _dueDate = _dateFormat.format(pickedDate); // Format the selected date
+      });
+    }
+  }
   Future<void> _handleSaveTask() async {
     if (_formKey.currentState?.validate() ?? false) {
       final taskData = {
@@ -139,7 +155,12 @@ class _AddTaskFormState extends State<AddTaskForm> {
             });
           }, isRequired: true),
           buildTextField('Subject', Icons.subject, isRequired: true, onChanged: (value) => _subject = value),
-          buildTextField('Due Date', Icons.calendar_month, isRequired: true, onChanged: (value) => _dueDate = value),
+          buildDatePickerField(
+            'Due Date',
+            Icons.calendar_today,
+            onTap: () => _selectDueDate(context),
+            value: _dueDate,
+          ),
           buildTextField('Contact', Icons.contact_page, onChanged: (value) => _contact = value),
           buildTextField('Account', Icons.account_box, onChanged: (value) => _account = value),
           buildDropdownField('Status', [
@@ -227,6 +248,31 @@ class _AddTaskFormState extends State<AddTaskForm> {
               );
             }).toList(),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildDatePickerField(
+      String label,
+      IconData icon, {
+        required VoidCallback onTap,
+        required String value,
+      }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AbsorbPointer(
+        child: TextFormField(
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF7b68ee)),
+            ),
+          ),
+          controller: TextEditingController(text: value),
         ),
       ),
     );
