@@ -189,8 +189,21 @@ class MeetingDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return Scaffold(
+        appBar: AppBar(
+        titleTextStyle: TextStyle(
+        color: Colors.white,
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+    ),
+    iconTheme: IconThemeData(
+    color: Colors.white,
+    ),
+    title: Text(meeting['host'], style: TextStyle(color: Colors.white)),
+    backgroundColor: Color(0xFF7b68ee),
+    ),
+    body: Padding(
+    padding: const EdgeInsets.all(16.0),
       child: ListView(
         children: [
             _buildDetailRow('Title', meeting['title'] ?? 'N/A'),
@@ -206,7 +219,8 @@ class MeetingDetailSheet extends StatelessWidget {
             _buildDetailRow('Remainder', meeting['remainder'] ?? 'N/A'),
           ],
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildDetailRow(String label, String value) {

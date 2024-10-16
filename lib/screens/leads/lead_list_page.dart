@@ -199,8 +199,21 @@ class LeadDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return Scaffold(
+        appBar: AppBar(
+        titleTextStyle: TextStyle(
+        color: Colors.white,
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+    ),
+    iconTheme: IconThemeData(
+    color: Colors.white,
+    ),
+    title: Text(lead['lead_owner'], style: TextStyle(color: Colors.white)),
+    backgroundColor: Color(0xFF7b68ee),
+    ),
+    body: Padding(
+    padding: const EdgeInsets.all(16.0),
       child: ListView(
         children: [
           _buildDetailRow('First Name', lead['first_name'] ?? 'N/A'),
@@ -235,6 +248,7 @@ class LeadDetailSheet extends StatelessWidget {
             ),
         ],
       ),
+    ),
     );
   }
 

@@ -85,6 +85,7 @@ class AddContactForm extends StatefulWidget {
 
 class _AddContactFormState extends State<AddContactForm> {
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _accountNameController = TextEditingController();
   File? _imageFile;
   late String _contactOwner;
   String _leadSource = 'None';
@@ -106,7 +107,6 @@ class _AddContactFormState extends State<AddContactForm> {
   String _zipCode = '';
   String _country = '';
   String _description = '';
-  String _accountName = '';
   String _vendorName = '';
   String _dateOfBirth = '';
   String _reportingTo = '';
@@ -117,6 +117,12 @@ class _AddContactFormState extends State<AddContactForm> {
   void initState() {
     super.initState();
     _contactOwner = '${widget.firstName} ${widget.lastName}';
+  }
+
+  @override
+  void dispose() {
+    _accountNameController.dispose();  // Dispose the controller to avoid memory leaks
+    super.dispose();
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -183,7 +189,7 @@ class _AddContactFormState extends State<AddContactForm> {
         'salutation': _salutation,
         'first_name': _firstName,
         'last_name': _lastName,
-        'account_name': _accountName,
+        'account_name': _accountNameController.text,
         'vendor_name': _vendorName,
         'title': _title,
         'email': widget.email,
@@ -263,11 +269,11 @@ class _AddContactFormState extends State<AddContactForm> {
           buildTextField('Last Name', Icons.person, isRequired: true, onChanged: (value) => _lastName = value),
           buildTextField(
             'Account Name',
-            Icons.business,
+            Icons.account_box,
+            controller: _accountNameController, // Attach the controller here
             isRequired: true,
-            onChanged: (value) => _accountName = value,
             onTap: () async {
-              // Navigate to AccountPage and wait for a selected account to be returned
+              // Navigate to AccountPage and wait for a selected account
               final selectedAccount = await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -275,15 +281,15 @@ class _AddContactFormState extends State<AddContactForm> {
                     firstName: widget.firstName,
                     lastName: widget.lastName,
                     email: widget.email,
-                    forSelection: true, // Set forSelection to true for account selection
+                    forSelection: true,
                   ),
                 ),
               );
 
-              // If an account is selected, update the _accountName field
+              // If an account is selected, update the _accountNameController text field
               if (selectedAccount != null) {
                 setState(() {
-                  _accountName = "${selectedAccount['first_name']} ${selectedAccount['last_name']}"; // Combine first and last names
+                  _accountNameController.text = "${selectedAccount['first_name']} ${selectedAccount['last_name']}";
                 });
               }
             },
@@ -359,7 +365,15 @@ class _AddContactFormState extends State<AddContactForm> {
     );
   }
 
-  Widget buildTextField(String label, IconData icon, {bool isRequired = false, int maxLines = 1, required ValueChanged<String> onChanged, VoidCallback? onTap}) {
+  Widget buildTextField(
+      String label,
+      IconData icon, {
+        TextEditingController? controller, // Controller is now optional
+        bool isRequired = false,
+        int maxLines = 1,
+        ValueChanged<String>? onChanged, // Make onChanged optional
+        VoidCallback? onTap,
+      }) {
     return GestureDetector(
       onTap: onTap, // If onTap is provided, it will be called
       child: AbsorbPointer(
@@ -367,6 +381,7 @@ class _AddContactFormState extends State<AddContactForm> {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: TextFormField(
+            controller: controller, // Use the controller if provided
             decoration: InputDecoration(
               labelText: isRequired ? '$label *' : label,
               labelStyle: TextStyle(color: Color(0xFF7b68ee)),
@@ -377,7 +392,9 @@ class _AddContactFormState extends State<AddContactForm> {
               ),
             ),
             maxLines: maxLines,
-            onChanged: onChanged,
+            onChanged: controller == null
+                ? onChanged // Use onChanged only if no controller is set
+                : null,
             validator: isRequired
                 ? (value) {
               if (value == null || value.isEmpty) {
@@ -391,7 +408,6 @@ class _AddContactFormState extends State<AddContactForm> {
       ),
     );
   }
-
 
   Widget buildDatePickerField(
       String label,

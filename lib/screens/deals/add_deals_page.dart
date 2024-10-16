@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-
 import '../../constants.dart';
+import '../accounts/account_page.dart';
+import '../contacts/contact_page.dart';
 
 Future<void> _saveDeal(Map<String, dynamic> dealData) async {
   final response = await http.post(
@@ -85,14 +86,14 @@ class _AddDealFormState extends State<AddDealForm> {
   final _formKey = GlobalKey<FormState>();
   late String _dealOwner;
   String _dealName = '';
-  String _accountName = '';
+  final TextEditingController _accountNameController = TextEditingController();
   String _closingDate = '';
   String _amount = '';
   String _stage = '';
   String _type = '';
   String _leadSource = '';
   String _expectedRevenue = '';
-  String _contactName = '';
+  final TextEditingController _contactNameController = TextEditingController();
   String _campaignSource = '';
   String _description = '';
   final DateFormat _dateFormat = DateFormat('dd-MM-yyyy');
@@ -102,6 +103,14 @@ class _AddDealFormState extends State<AddDealForm> {
     super.initState();
     _dealOwner = '${widget.firstName} ${widget.lastName}';
   }
+
+  @override
+  void dispose() {
+    _accountNameController.dispose();
+    _contactNameController.dispose();// Dispose the controller to avoid memory leaks
+    super.dispose();
+  }
+
 
   Future<void> _selectClosingDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
@@ -125,14 +134,14 @@ class _AddDealFormState extends State<AddDealForm> {
         'amount': _amount,
         'deal_name': _dealName,
         'closing_date': _closingDate,
-        'account_name': _accountName,
+        'account_name': _accountNameController.text,
         'type': _type,
         'stage': _stage,
         'first_name': widget.firstName,
         'last_name': widget.lastName,
         'expected_revenue': _expectedRevenue,
         'lead_source': _leadSource,
-        'contact_name': _contactName,
+        'contact_name': _accountNameController.text,
         'campaign_source': _campaignSource,
         'description': _description,
       };
@@ -183,13 +192,38 @@ class _AddDealFormState extends State<AddDealForm> {
           buildTextField('Deal Name', Icons.monetization_on,
               isRequired: true, onChanged: (value) => _dealName = value),
           buildDatePickerField(
-            'Due Date',
+            'Closing Date',
             Icons.calendar_today,
             onTap: () => _selectClosingDate(context),
             value: _closingDate,
           ),
-          buildTextField('Account Name', Icons.account_box,
-              isRequired: true, onChanged: (value) => _accountName = value),
+          buildTextField(
+            'Account Name',
+            Icons.account_box,
+            controller: _accountNameController, // Attach the controller here
+            isRequired: true,
+            onTap: () async {
+              // Navigate to AccountPage and wait for a selected account
+              final selectedAccount = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AccountPage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                    email: widget.email,
+                    forSelection: true,
+                  ),
+                ),
+              );
+
+              // If an account is selected, update the _accountNameController text field
+              if (selectedAccount != null) {
+                setState(() {
+                  _accountNameController.text = "${selectedAccount['first_name']} ${selectedAccount['last_name']}";
+                });
+              }
+            },
+          ),
           buildDropdownField(
             'Stage',
             [
@@ -256,8 +290,33 @@ class _AddDealFormState extends State<AddDealForm> {
           ),
           buildTextField('Expected Revenue', Icons.attach_money,
               onChanged: (value) => _expectedRevenue = value),
-          buildTextField('Contact Name', Icons.contact_page,
-              onChanged: (value) => _contactName = value),
+          buildTextField(
+            'Contact Name',
+            Icons.contact_page,
+            controller: _contactNameController, // Attach the controller here
+            isRequired: true,
+            onTap: () async {
+              // Navigate to AccountPage and wait for a selected account
+              final selectedContact = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ContactPage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                    email: widget.email,
+                    forSelection: true,
+                  ),
+                ),
+              );
+
+              // If an contact is selected, update the _accountAccountController text field
+              if (selectedContact != null) {
+                setState(() {
+                  _contactNameController.text = "${selectedContact['first_name']} ${selectedContact['last_name']}";
+                });
+              }
+            },
+          ),
           buildTextField('Campaign Source', Icons.campaign,
               onChanged: (value) => _campaignSource = value),
 
@@ -283,35 +342,50 @@ class _AddDealFormState extends State<AddDealForm> {
     );
   }
 
-  Widget buildTextField(String label, IconData icon,
-      {bool isRequired = false,
+  Widget buildTextField(
+      String label,
+      IconData icon, {
+        TextEditingController? controller, // Controller is now optional
+        bool isRequired = false,
         int maxLines = 1,
-        required ValueChanged<String> onChanged}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        decoration: InputDecoration(
-          labelText: isRequired ? '$label *' : label,
-          labelStyle: TextStyle(color: Color(0xFF7b68ee)),
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF7b68ee)),
+        ValueChanged<String>? onChanged, // Make onChanged optional
+        VoidCallback? onTap,
+      }) {
+    return GestureDetector(
+      onTap: onTap, // If onTap is provided, it will be called
+      child: AbsorbPointer(
+        absorbing: onTap != null, // Prevent keyboard input if onTap is provided
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: TextFormField(
+            controller: controller, // Use the controller if provided
+            decoration: InputDecoration(
+              labelText: isRequired ? '$label *' : label,
+              labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF7b68ee)),
+              ),
+            ),
+            maxLines: maxLines,
+            onChanged: controller == null
+                ? onChanged // Use onChanged only if no controller is set
+                : null,
+            validator: isRequired
+                ? (value) {
+              if (value == null || value.isEmpty) {
+                return '$label is required';
+              }
+              return null;
+            }
+                : null,
           ),
         ),
-        maxLines: maxLines,
-        onChanged: onChanged,
-        validator: isRequired
-            ? (value) {
-          if (value == null || value.isEmpty) {
-            return '$label is required';
-          }
-          return null;
-        }
-            : null,
       ),
     );
   }
+
 
   Widget buildDatePickerField(
       String label,

@@ -35,49 +35,55 @@ class _AccountPageState extends State<AccountPage> {
       final response = await http.get(Uri.parse(getAccountsUrl));
 
       if (response.statusCode == 200) {
-        print('Response: ${response.body}');
         final List<dynamic> accountsJson = json.decode(response.body);
-
         setState(() {
           _accounts = accountsJson.cast<Map<String, dynamic>>();
         });
-
-        if (_accounts.isEmpty) {
-          print('No accounts found');
-        }
       } else {
         print('Server error: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching accounts: $e');  // Will display any connection or parsing errors
+      print('Error fetching accounts: $e');
     }
   }
 
+  Future<void> _deleteAccount(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse(deleteAccountUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'id': id}),
+      );
 
-  //Future<void> _deleteAccount(int id) async {
-  //     try {
-  //       final response = await http.post(
-  //         Uri.parse(deleteAccountUrl),
-  //body: json.encode({'id': id}),
-  //headers: {'Content-Type': 'application/json'},
-  //);
+      print('Delete response status: ${response.statusCode}');
+      print('Delete response body: ${response.body}');
 
-  //print('Delete response status: ${response.statusCode}');
-  //print('Delete response body: ${response.body}');
-
-  //if (response.statusCode == 200) {
-  //final jsonResponse = json.decode(response.body);
-  //if (jsonResponse['status'] == 'success') {
-  //setState(() {
-  // _accounts.removeWhere((account) => account['id'] == id);
-  //});
-  // } else {
-  // print('Failed to delete account: ${jsonResponse['message']}');
-  // }
-  // } else {
-  // print('Failed to delete account');
-  // }
-  //}
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          setState(() {
+            _accounts.removeWhere((account) => account['id'] == id);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Account deleted successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete account: ${jsonResponse['message']}')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete account: ${response.reasonPhrase}')),
+        );
+      }
+    } catch (e) {
+      print('Error deleting account: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting account: $e')),
+      );
+    }
+  }
 
   Future<void> _showAccountDetails(Map<String, dynamic> account) async {
     showModalBottomSheet(
@@ -90,9 +96,7 @@ class _AccountPageState extends State<AccountPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: IconThemeData(color: Colors.white),
         title: Text('Accounts', style: TextStyle(color: Colors.white)),
         backgroundColor: Color(0xFF7b68ee),
         actions: [
@@ -151,10 +155,8 @@ class _AccountPageState extends State<AccountPage> {
                     ),
                     onTap: () {
                       if (widget.forSelection) {
-                        // If we are selecting an account (from AddContactForm), return the selected account
                         Navigator.pop(context, account);
                       } else {
-                        // If we are not selecting an account, show the account details
                         _showAccountDetails(account);
                       }
                     },
@@ -182,7 +184,7 @@ class _AccountPageState extends State<AccountPage> {
                     );
 
                     if (shouldDelete) {
-                      //_deleteAccount(index);
+                      _deleteAccount(account['id']); // Pass account ID
                     }
                   },
                 ),
@@ -202,54 +204,62 @@ class AccountDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: ListView(
-        children: [
-          _buildDetailRow('Account Name', account['account_name'] ?? 'N/A'),
-          _buildDetailRow('Account Number', account['account_number'] ?? 'N/A'),
-          _buildDetailRow('Phone', account['phone'] ?? 'N/A'),
-          _buildDetailRow('Account Type', account['account_type'] ?? 'N/A'),
-          _buildDetailRow('Employees', account['employees']?.toString() ?? 'N/A'),
-          _buildDetailRow('Annual Revenue', account['annual_revenue']?.toString() ?? 'N/A'),
-          // Billing Address Heading
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Text(
-              'Billing Address',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+    return Scaffold(
+      appBar: AppBar(
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        iconTheme: IconThemeData(color: Colors.white),
+        title: Text(account['account_owner'] ?? 'Unknown', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFF7b68ee),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
+          children: [
+            _buildDetailRow('Account Name', account['account_name'] ?? 'N/A'),
+            _buildDetailRow('Account Number', account['account_number'] ?? 'N/A'),
+            _buildDetailRow('Phone', account['phone'] ?? 'N/A'),
+            _buildDetailRow('Account Type', account['account_type'] ?? 'N/A'),
+            _buildDetailRow('Employees', account['employees']?.toString() ?? 'N/A'),
+            _buildDetailRow('Annual Revenue', account['annual_revenue']?.toString() ?? 'N/A'),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Text(
+                'Billing Address',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
             ),
-          ),
-          _buildDetailRow('Billing Street', account['billing_street'] ?? 'N/A'),
-          _buildDetailRow('Billing City', account['billing_city'] ?? 'N/A'),
-          _buildDetailRow('Billing State', account['billing_state'] ?? 'N/A'),
-          _buildDetailRow('Billing Zip Code', account['billing_zip_code'] ?? 'N/A'),
-          _buildDetailRow('Billing Country', account['billing_country'] ?? 'N/A'),
-          // Shipping Address Heading
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Text(
-              'Shipping Address',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            _buildDetailRow('Billing Street', account['billing_street'] ?? 'N/A'),
+            _buildDetailRow('Billing City', account['billing_city'] ?? 'N/A'),
+            _buildDetailRow('Billing State', account['billing_state'] ?? 'N/A'),
+            _buildDetailRow('Billing Zip Code', account['billing_zip_code'] ?? 'N/A'),
+            _buildDetailRow('Billing Country', account['billing_country'] ?? 'N/A'),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Text(
+                'Shipping Address',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
             ),
-          ),
-          _buildDetailRow('Shipping Street', account['shipping_street'] ?? 'N/A'),
-          _buildDetailRow('Shipping City', account['shipping_city'] ?? 'N/A'),
-          _buildDetailRow('Shipping State', account['shipping_state'] ?? 'N/A'),
-          _buildDetailRow('Shipping Zip Code', account['shipping_zip_code'] ?? 'N/A'),
-          _buildDetailRow('Shipping Country', account['shipping_country'] ?? 'N/A'),
-
-          _buildDetailRow('Rating', account['rating'] ?? 'N/A'),
-          _buildDetailRow('Fax', account['fax'] ?? 'N/A'),
-          _buildDetailRow('Account Site', account['account_site'] ?? 'N/A'),
-          _buildDetailRow('Parent Account', account['parent_account'] ?? 'N/A'),
-          _buildDetailRow('Website', account['website'] ?? 'N/A'),
-          _buildDetailRow('Ticker Symbol', account['ticker_symbol'] ?? 'N/A'),
-          _buildDetailRow('Ownership', account['ownership'] ?? 'N/A'),
-          _buildDetailRow('Industry', account['industry'] ?? 'N/A'),
-          _buildDetailRow('SIC Code', account['sic_code'] ?? 'N/A'),
-          _buildDetailRow('Description', account['description'] ?? 'N/A'),
-        ],
+            _buildDetailRow('Shipping Street', account['shipping_street'] ?? 'N/A'),
+            _buildDetailRow('Shipping City', account['shipping_city'] ?? 'N/A'),
+            _buildDetailRow('Shipping State', account['shipping_state'] ?? 'N/A'),
+            _buildDetailRow('Shipping Zip Code', account['shipping_zip_code'] ?? 'N/A'),
+            _buildDetailRow('Shipping Country', account['shipping_country'] ?? 'N/A'),
+            _buildDetailRow('Rating', account['rating'] ?? 'N/A'),
+            _buildDetailRow('Fax', account['fax'] ?? 'N/A'),
+            _buildDetailRow('Account Site', account['account_site'] ?? 'N/A'),
+            _buildDetailRow('Parent Account', account['parent_account'] ?? 'N/A'),
+            _buildDetailRow('Website', account['website'] ?? 'N/A'),
+            _buildDetailRow('Ticker Symbol', account['ticker_symbol'] ?? 'N/A'),
+            _buildDetailRow('Ownership', account['ownership'] ?? 'N/A'),
+            _buildDetailRow('Industry', account['industry'] ?? 'N/A'),
+            _buildDetailRow('SIC Code', account['sic_code'] ?? 'N/A'),
+          ],
+        ),
       ),
     );
   }

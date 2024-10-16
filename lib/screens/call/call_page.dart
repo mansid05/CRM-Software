@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import '../../constants.dart';
 import 'add_call_page.dart';
 
 class CallPage extends StatefulWidget {
-
   @override
   _CallPageState createState() => _CallPageState();
 }
@@ -24,7 +24,7 @@ class _CallPageState extends State<CallPage> {
       final response = await http.get(Uri.parse(getCallsUrl));
 
       if (response.statusCode == 200) {
-        print('Response: ${response.body}'); // Debugging the response
+        print('Response: ${response.body}');
         final List<dynamic> callsJson = json.decode(response.body);
 
         setState(() {
@@ -42,30 +42,14 @@ class _CallPageState extends State<CallPage> {
     }
   }
 
-  //Future<void> _deleteCall(int id) async {
-  //     try {
-  //       final response = await http.post(
-  //         Uri.parse(deleteCallUrl),
-  //body: json.encode({'id': id}),
-  //headers: {'Content-Type': 'application/json'},
-  //);
-
-  //print('Delete response status: ${response.statusCode}');
-  //print('Delete response body: ${response.body}');
-
-  //if (response.statusCode == 200) {
-  //final jsonResponse = json.decode(response.body);
-  //if (jsonResponse['status'] == 'success') {
-  //setState(() {
-  // _calls.removeWhere((call) => call['id'] == id);
-  //});
-  // } else {
-  // print('Failed to delete call: ${jsonResponse['message']}');
-  // }
-  // } else {
-  // print('Failed to delete call');
-  // }
-  //}
+  Future<void> _launchDialer(String number) async {
+    final Uri url = Uri(scheme: 'tel', path: number);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      print('Could not launch dialer');
+    }
+  }
 
   Future<void> _showCallDetails(Map<String, dynamic> call) async {
     showModalBottomSheet(
@@ -73,6 +57,7 @@ class _CallPageState extends State<CallPage> {
       builder: (context) => CallDetailSheet(call: call),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,6 +69,13 @@ class _CallPageState extends State<CallPage> {
         backgroundColor: Color(0xFF7b68ee),
         actions: [
           IconButton(
+            icon: Icon(Icons.call, color: Colors.white),
+            onPressed: () {
+              // You can provide a default number or handle launching a generic dialer here.
+              _launchDialer(''); // Empty string to just open the dialer
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.add, color: Colors.white),
             onPressed: () {
               Navigator.push(
@@ -91,7 +83,7 @@ class _CallPageState extends State<CallPage> {
                 MaterialPageRoute(
                   builder: (context) => AddCallPage(),
                 ),
-              ).then((_) => _fetchCalls()); // Refresh calls after adding a new one
+              ).then((_) => _fetchCalls());
             },
           ),
         ],
@@ -159,7 +151,7 @@ class _CallPageState extends State<CallPage> {
                     );
 
                     if (shouldDelete) {
-                      //_deleteCall(index);
+                      //_deleteCall(call['id']);
                     }
                   },
                 ),
@@ -179,21 +171,35 @@ class CallDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: ListView(
-        children: [
-          _buildDetailRow('Call Type', call['call_type'] ?? 'N/A'),
-          _buildDetailRow('Outgoing Call Status', call['outgoing_call_status'] ?? 'N/A'),
-          _buildDetailRow('Call Start Time', call['call_start_time'] ?? 'N/A'),
-          _buildDetailRow('Call Duration', call['call_duration'] ?? 'N/A'),
-          _buildDetailRow('Subject', call['subject'] ?? 'N/A'),
-          _buildDetailRow('Account', call['account'] ?? 'N/A'),
-          _buildDetailRow('Call Purpose', call['call_purpose'] ?? 'N/A'),
-          _buildDetailRow('Call Agenda', call['call_agenda'] ?? 'N/A'),
-          _buildDetailRow('Call Result', call['call_result'] ?? 'N/A'),
-          _buildDetailRow('Description', call['description'] ?? 'N/A'),
-        ],
+    return Scaffold(
+      appBar: AppBar(
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        iconTheme: IconThemeData(
+          color: Colors.white,
+        ),
+        title: Text('Outgoing call to ${call['contact']}', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFF7b68ee),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
+          children: [
+            _buildDetailRow('Call Type', call['call_type'] ?? 'N/A'),
+            _buildDetailRow('Outgoing Call Status', call['outgoing_call_status'] ?? 'N/A'),
+            _buildDetailRow('Call Start Time', call['call_start_time'] ?? 'N/A'),
+            _buildDetailRow('Call Duration', call['call_duration'] ?? 'N/A'),
+            _buildDetailRow('Subject', call['subject'] ?? 'N/A'),
+            _buildDetailRow('Account', call['account'] ?? 'N/A'),
+            _buildDetailRow('Call Purpose', call['call_purpose'] ?? 'N/A'),
+            _buildDetailRow('Call Agenda', call['call_agenda'] ?? 'N/A'),
+            _buildDetailRow('Call Result', call['call_result'] ?? 'N/A'),
+            _buildDetailRow('Description', call['description'] ?? 'N/A'),
+          ],
+        ),
       ),
     );
   }

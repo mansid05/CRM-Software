@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../constants.dart';
+import 'account_page.dart';
 
 Future<void> _saveAccount(Map<String, dynamic> accountData) async {
   final response = await http.post(
@@ -88,7 +89,7 @@ class _AddAccountFormState extends State<AddAccountForm> {
   String _phone = '';
   String _accountName = 'None';
   String _accountSite = '';
-  String _parentAccount = 'None';
+  final TextEditingController _parentAccountController = TextEditingController();
   String _website = '';
   String _employees = 'None';
   String _sicCode = '';
@@ -118,6 +119,12 @@ class _AddAccountFormState extends State<AddAccountForm> {
     _accountOwner = '${widget.firstName} ${widget.lastName}';
   }
 
+  @override
+  void dispose() {
+    _parentAccountController.dispose();  // Dispose the controller to avoid memory leaks
+    super.dispose();
+  }
+
   Future<void> _handleSaveAccount() async {
     if (_formKey.currentState?.validate() ?? false) {
       final accountData = {
@@ -130,7 +137,7 @@ class _AddAccountFormState extends State<AddAccountForm> {
         'email': widget.email,
         'phone': _phone,
         'account_site': _accountSite,
-        'parent_account': _parentAccount,
+        'parent_account': _parentAccountController.text,
         'website': _website,
         'sic_code': _sicCode,
         'ticker_Symbol': _tickerSymbol,
@@ -201,7 +208,32 @@ class _AddAccountFormState extends State<AddAccountForm> {
           buildTextField('Phone', Icons.phone, isRequired: true, onChanged: (value) => _phone = value),
           buildTextField('Account Site', Icons.accessibility, onChanged: (value) => _accountSite = value),
           buildTextField('Fax', Icons.print, onChanged: (value) => _fax = value),
-          buildTextField('Parent Account', Icons.account_box, onChanged: (value) => _parentAccount = value),
+          buildTextField(
+            'Parent Account',
+            Icons.account_box,
+            controller: _parentAccountController, // Attach the controller here
+            onTap: () async {
+              // Navigate to AccountPage and wait for a selected account
+              final selectedAccount = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AccountPage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                    email: widget.email,
+                    forSelection: true,
+                  ),
+                ),
+              );
+
+              // If an account is selected, update the _accountNameController text field
+              if (selectedAccount != null) {
+                setState(() {
+                  _parentAccountController.text = "${selectedAccount['first_name']} ${selectedAccount['last_name']}";
+                });
+              }
+            },
+          ),
           buildTextField('Website', Icons.web, onChanged: (value) => _website = value),
           buildTextField('Account Number', Icons.numbers, isRequired: true, onChanged: (value) => _accountNumber = value),
           buildTextField('Ticker Symbol', Icons.email, onChanged: (value) => _tickerSymbol = value),
@@ -307,31 +339,46 @@ class _AddAccountFormState extends State<AddAccountForm> {
     );
   }
 
-  Widget buildTextField(String label, IconData icon,
-      {bool isRequired = false, int maxLines = 1, required ValueChanged<
-          String> onChanged}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        decoration: InputDecoration(
-          labelText: isRequired ? '$label *' : label,
-          labelStyle: TextStyle(color: Color(0xFF7b68ee)),
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF7b68ee)),
+  Widget buildTextField(
+      String label,
+      IconData icon, {
+        TextEditingController? controller, // Controller is now optional
+        bool isRequired = false,
+        int maxLines = 1,
+        ValueChanged<String>? onChanged, // Make onChanged optional
+        VoidCallback? onTap,
+      }) {
+    return GestureDetector(
+      onTap: onTap, // If onTap is provided, it will be called
+      child: AbsorbPointer(
+        absorbing: onTap != null, // Prevent keyboard input if onTap is provided
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: TextFormField(
+            controller: controller, // Use the controller if provided
+            decoration: InputDecoration(
+              labelText: isRequired ? '$label *' : label,
+              labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF7b68ee)),
+              ),
+            ),
+            maxLines: maxLines,
+            onChanged: controller == null
+                ? onChanged // Use onChanged only if no controller is set
+                : null,
+            validator: isRequired
+                ? (value) {
+              if (value == null || value.isEmpty) {
+                return '$label is required';
+              }
+              return null;
+            }
+                : null,
           ),
         ),
-        maxLines: maxLines,
-        onChanged: onChanged,
-        validator: isRequired
-            ? (value) {
-          if (value == null || value.isEmpty) {
-            return '$label is required';
-          }
-          return null;
-        }
-            : null,
       ),
     );
   }

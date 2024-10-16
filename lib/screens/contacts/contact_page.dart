@@ -9,11 +9,13 @@ class ContactPage extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String email;
+  final bool forSelection;
 
   ContactPage({
     required this.firstName,
     required this.lastName,
     required this.email,
+    this.forSelection = false,
   });
 
   @override
@@ -148,7 +150,13 @@ class _ContactPageState extends State<ContactPage> {
                       foregroundColor: Colors.white,
                     ),
                     onTap: () {
-                      _showContactDetails(contact);
+                      if (widget.forSelection) {
+                        // If we are selecting an account (from AddContactForm), return the selected account
+                        Navigator.pop(context, contact);
+                      } else {
+                        // If we are not selecting an account, show the account details
+                        _showContactDetails(contact);
+                      }
                     },
                   ),
                 ),
@@ -204,7 +212,7 @@ class ContactDetailSheet extends StatelessWidget {
         iconTheme: IconThemeData(
           color: Colors.white,
         ),
-        title: Text('${contact['first_name'] ?? 'Unknown'} ${contact['last_name'] ?? 'Unknown'}', style: TextStyle(color: Colors.white)),
+        title: Text(contact['contact_owner'], style: TextStyle(color: Colors.white)),
         backgroundColor: Color(0xFF7b68ee),
       ),
       body: Padding(

@@ -137,6 +137,10 @@ class _DealPageState extends State<DealPage> {
                     contentPadding: EdgeInsets.all(16),
                     title: Text('${deal['first_name'] ?? ''} ${deal['last_name'] ?? ''}'),
                     subtitle: Text(deal['deal_name'] ?? 'Deal Name'),
+                    leading: CircleAvatar(
+                      child: Icon(Icons.monetization_on, size: 40, color: Colors.white),
+                      backgroundColor: Color(0xFF7b68ee),
+                    ),
                     onTap: () {
                       _showDealDetails(deal);
                     },

@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 import '../../constants.dart';
+import '../accounts/account_page.dart';
+import '../contacts/contact_page.dart';
 
 Future<void> _saveTask(Map<String, dynamic> taskData) async {
   final response = await http.post(
@@ -86,8 +88,8 @@ class _AddTaskFormState extends State<AddTaskForm> {
   late String _taskOwner;
   String _subject = '';
   String _dueDate = '';
-  String _contact = '';
-  String _account = '';
+  final TextEditingController _accountController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
   String _status = 'Not Started'; // Setting default status value
   String _priority = 'Normal'; // Setting default priority value
   bool _sendNotificationEmail = false;
@@ -101,6 +103,14 @@ class _AddTaskFormState extends State<AddTaskForm> {
     super.initState();
     _taskOwner = '${widget.firstName} ${widget.lastName}';
   }
+
+  @override
+  void dispose() {
+    _accountController.dispose();
+    _contactController.dispose();// Dispose the controller to avoid memory leaks
+    super.dispose();
+  }
+
   Future<void> _selectDueDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -121,8 +131,8 @@ class _AddTaskFormState extends State<AddTaskForm> {
         'task_owner': _taskOwner,
         'subject': _subject,
         'due_date': _dueDate,
-        'contact': _contact,
-        'account': _account,
+        'contact': _contactController.text,
+        'account': _accountController.text,
         'status': _status,
         'priority': _priority,
         'remainder': _remainder,
@@ -161,8 +171,60 @@ class _AddTaskFormState extends State<AddTaskForm> {
             onTap: () => _selectDueDate(context),
             value: _dueDate,
           ),
-          buildTextField('Contact', Icons.contact_page, onChanged: (value) => _contact = value),
-          buildTextField('Account', Icons.account_box, onChanged: (value) => _account = value),
+          buildTextField(
+            'Contact',
+            Icons.business,
+            controller: _contactController, // Attach the controller here
+            isRequired: true,
+            onTap: () async {
+              // Navigate to AccountPage and wait for a selected account
+              final selectedContact = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ContactPage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                    email: widget.email,
+                    forSelection: true,
+                  ),
+                ),
+              );
+
+              // If an contact is selected, update the _accountAccountController text field
+              if (selectedContact != null) {
+                setState(() {
+                  _contactController.text = "${selectedContact['first_name']} ${selectedContact['last_name']}";
+                });
+              }
+            },
+          ),
+          buildTextField(
+            'Account',
+            Icons.business,
+            controller: _accountController, // Attach the controller here
+            isRequired: true,
+            onTap: () async {
+              // Navigate to AccountPage and wait for a selected account
+              final selectedAccount = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AccountPage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                    email: widget.email,
+                    forSelection: true,
+                  ),
+                ),
+              );
+
+              // If an account is selected, update the _accountNameController text field
+              if (selectedAccount != null) {
+                setState(() {
+                  _accountController.text = "${selectedAccount['first_name']} ${selectedAccount['last_name']}";
+                });
+              }
+            },
+          ),
           buildDropdownField('Status', [
             'Not Started',
             'Deferred',
@@ -206,20 +268,46 @@ class _AddTaskFormState extends State<AddTaskForm> {
     );
   }
 
-  Widget buildTextField(String label, IconData icon, {bool isRequired = false, int maxLines = 1, required ValueChanged<String> onChanged}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        decoration: InputDecoration(
-          labelText: isRequired ? '$label *' : label,
-          labelStyle: TextStyle(color: Color(0xFF7b68ee)),
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
-          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF7b68ee))),
+  Widget buildTextField(
+      String label,
+      IconData icon, {
+        TextEditingController? controller, // Controller is now optional
+        bool isRequired = false,
+        int maxLines = 1,
+        ValueChanged<String>? onChanged, // Make onChanged optional
+        VoidCallback? onTap,
+      }) {
+    return GestureDetector(
+      onTap: onTap, // If onTap is provided, it will be called
+      child: AbsorbPointer(
+        absorbing: onTap != null, // Prevent keyboard input if onTap is provided
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: TextFormField(
+            controller: controller, // Use the controller if provided
+            decoration: InputDecoration(
+              labelText: isRequired ? '$label *' : label,
+              labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF7b68ee)),
+              ),
+            ),
+            maxLines: maxLines,
+            onChanged: controller == null
+                ? onChanged // Use onChanged only if no controller is set
+                : null,
+            validator: isRequired
+                ? (value) {
+              if (value == null || value.isEmpty) {
+                return '$label is required';
+              }
+              return null;
+            }
+                : null,
+          ),
         ),
-        maxLines: maxLines,
-        onChanged: onChanged,
-        validator: isRequired ? (value) => value == null || value.isEmpty ? '$label is required' : null : null,
       ),
     );
   }

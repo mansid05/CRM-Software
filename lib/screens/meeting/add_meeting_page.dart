@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../../constants.dart';
+import '../accounts/account_page.dart';
+import '../contacts/contact_page.dart';
 
 Future<void> _saveMeeting(Map<String, dynamic> meetingData) async {
   final response = await http.post(
@@ -90,15 +92,22 @@ class _AddMeetingFormState extends State<AddMeetingForm> {
   String _participants = '';
   String _reminder = 'None';
   bool _allDay = false;
-  String _account = '';
+  final TextEditingController _accountController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
   String _repeat = 'None';
   String _description = '';
-  String _contact = '';
 
   @override
   void initState() {
     super.initState();
     _host = '${widget.firstName} ${widget.lastName}';
+  }
+
+  @override
+  void dispose() {
+    _accountController.dispose();
+    _contactController.dispose();// Dispose the controller to avoid memory leaks
+    super.dispose();
   }
 
   Future<void> _handleSaveMeeting() async {
@@ -108,13 +117,13 @@ class _AddMeetingFormState extends State<AddMeetingForm> {
         'title': _title,
         'location': _location,
         'to': _to,
-        'account': _account,
+        'contact': _contactController.text,
+        'account': _accountController.text,
         'from': _from,
         'participants': _participants,
         'reminder': _reminder,
         'repeat': _repeat,
         'description': _description,
-        'contact': _contact,
         'all_day': _allDay ? '1' : '0',
       };
 
@@ -189,8 +198,60 @@ class _AddMeetingFormState extends State<AddMeetingForm> {
           }, isRequired: true),
 
           buildTextField('Participants', Icons.people, onChanged: (value) => _participants = value),
-          buildTextField('Contact', Icons.contact_page, onChanged: (value) => _account = value),
-          buildTextField('Account', Icons.account_box, onChanged: (value) => _account = value),
+          buildTextField(
+            'Contact',
+            Icons.contact_page,
+            controller: _contactController, // Attach the controller here
+            isRequired: true,
+            onTap: () async {
+              // Navigate to AccountPage and wait for a selected account
+              final selectedContact = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ContactPage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                    email: widget.email,
+                    forSelection: true,
+                  ),
+                ),
+              );
+
+              // If an contact is selected, update the _accountAccountController text field
+              if (selectedContact != null) {
+                setState(() {
+                  _contactController.text = "${selectedContact['first_name']} ${selectedContact['last_name']}";
+                });
+              }
+            },
+          ),
+          buildTextField(
+            'Account',
+            Icons.account_box,
+            controller: _accountController, // Attach the controller here
+            isRequired: true,
+            onTap: () async {
+              // Navigate to AccountPage and wait for a selected account
+              final selectedAccount = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AccountPage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                    email: widget.email,
+                    forSelection: true,
+                  ),
+                ),
+              );
+
+              // If an account is selected, update the _accountNameController text field
+              if (selectedAccount != null) {
+                setState(() {
+                  _accountController.text = "${selectedAccount['first_name']} ${selectedAccount['last_name']}";
+                });
+              }
+            },
+          ),
           buildDropdownField('Repeat', ['None', 'Daily', 'Weekly', 'Monthly', 'Yearly'], Icons.repeat, _repeat, (newValue) {
             setState(() {
               _repeat = newValue!;
@@ -226,29 +287,46 @@ class _AddMeetingFormState extends State<AddMeetingForm> {
     );
   }
 
-  Widget buildTextField(String label, IconData icon, {bool isRequired = false, int maxLines = 1, required ValueChanged<String> onChanged}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        decoration: InputDecoration(
-          labelText: isRequired ? '$label *' : label,
-          labelStyle: TextStyle(color: Color(0xFF7b68ee)),
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF7b68ee)),
+  Widget buildTextField(
+      String label,
+      IconData icon, {
+        TextEditingController? controller, // Controller is now optional
+        bool isRequired = false,
+        int maxLines = 1,
+        ValueChanged<String>? onChanged, // Make onChanged optional
+        VoidCallback? onTap,
+      }) {
+    return GestureDetector(
+      onTap: onTap, // If onTap is provided, it will be called
+      child: AbsorbPointer(
+        absorbing: onTap != null, // Prevent keyboard input if onTap is provided
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: TextFormField(
+            controller: controller, // Use the controller if provided
+            decoration: InputDecoration(
+              labelText: isRequired ? '$label *' : label,
+              labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF7b68ee)),
+              ),
+            ),
+            maxLines: maxLines,
+            onChanged: controller == null
+                ? onChanged // Use onChanged only if no controller is set
+                : null,
+            validator: isRequired
+                ? (value) {
+              if (value == null || value.isEmpty) {
+                return '$label is required';
+              }
+              return null;
+            }
+                : null,
           ),
         ),
-        maxLines: maxLines,
-        onChanged: onChanged,
-        validator: isRequired
-            ? (value) {
-          if (value == null || value.isEmpty) {
-            return '$label is required';
-          }
-          return null;
-        }
-            : null,
       ),
     );
   }

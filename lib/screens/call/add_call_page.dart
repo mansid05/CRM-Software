@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 import '../../constants.dart';
+import '../accounts/account_page.dart';
+import '../contacts/contact_page.dart';
 
 Future<void> _saveCall(Map<String, dynamic> callData) async {
   final response = await http.post(
@@ -55,8 +57,8 @@ class AddCallForm extends StatefulWidget {
 class _AddCallFormState extends State<AddCallForm> {
   final _formKey = GlobalKey<FormState>();
 
-  String _contact = '';
-  String _account = '';
+  final TextEditingController _accountController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
   String _callType = 'Outbound';
   String _outgoingCallStatus = 'Completed';
   String _callStartTime = '';
@@ -67,11 +69,18 @@ class _AddCallFormState extends State<AddCallForm> {
   String _callResult = 'None';
   String _description = '';
 
+  @override
+  void dispose() {
+    _accountController.dispose();
+    _contactController.dispose();// Dispose the controller to avoid memory leaks
+    super.dispose();
+  }
+
   Future<void> _handleSaveCall() async {
     if (_formKey.currentState?.validate() ?? false) {
       final callData = {
-        'contact': _contact,
-        'account': _account,
+        'contact': _contactController.text,
+        'account': _accountController.text,
         'call_type': _callType,
         'outgoing_call_status': _outgoingCallStatus,
         'call_start_time': _callStartTime,
@@ -108,8 +117,54 @@ class _AddCallFormState extends State<AddCallForm> {
                 style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7b68ee)),
               ),
               SizedBox(height: 10),
-              buildTextField('Contact', Icons.contact_page, isRequired: true, onChanged: (value) => _contact = value),
-              buildTextField('Account', Icons.account_box, isRequired: true, onChanged: (value) => _account = value),
+              buildTextField(
+                'Contact',
+                Icons.contact_page,
+                controller: _contactController, // Attach the controller here
+                isRequired: true,
+                onTap: () async {
+                  // Navigate to AccountPage and wait for a selected account
+                  final selectedContact = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ContactPage(
+                        forSelection: true, firstName: '', lastName: '', email: ' ',
+                      ),
+                    ),
+                  );
+
+                  // If an contact is selected, update the _accountAccountController text field
+                  if (selectedContact != null) {
+                    setState(() {
+                      _contactController.text = "${selectedContact['first_name']} ${selectedContact['last_name']}";
+                    });
+                  }
+                },
+              ),
+              buildTextField(
+                'Account',
+                Icons.account_box,
+                controller: _accountController, // Attach the controller here
+                isRequired: true,
+                onTap: () async {
+                  // Navigate to AccountPage and wait for a selected account
+                  final selectedAccount = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AccountPage(
+                        forSelection: true, firstName: '', lastName: '', email: '',
+                      ),
+                    ),
+                  );
+
+                  // If an account is selected, update the _accountNameController text field
+                  if (selectedAccount != null) {
+                    setState(() {
+                      _accountController.text = "${selectedAccount['first_name']} ${selectedAccount['last_name']}";
+                    });
+                  }
+                },
+              ),
               buildDropdownField('Call Type', ['Outbound', 'Inbound', 'Missed'], Icons.call_made, _callType, (newValue) {
                 setState(() {
                   _callType = newValue!;
@@ -166,8 +221,16 @@ class _AddCallFormState extends State<AddCallForm> {
     );
   }
 
-  Widget buildTextField(String label, IconData icon, {bool isRequired = false, int maxLines = 1, required ValueChanged<String> onChanged}) {
-    // Check if the field is for call start time
+  Widget buildTextField(
+      String label,
+      IconData icon, {
+        TextEditingController? controller, // Controller is now optional
+        bool isRequired = false,
+        int maxLines = 1,
+        ValueChanged<String>? onChanged, // Make onChanged optional
+        VoidCallback? onTap,
+      }) {
+    // Special case for "Call Start Time"
     if (label == 'Call Start Time') {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -204,7 +267,9 @@ class _AddCallFormState extends State<AddCallForm> {
                 // Update the callStartTime variable and call onChanged callback
                 setState(() {
                   _callStartTime = formattedDateTime;
-                  onChanged(_callStartTime); // Update the TextFormField with the selected value
+                  if (onChanged != null) {
+                    onChanged(_callStartTime); // Notify about the change
+                  }
                 });
               }
             }
@@ -236,32 +301,40 @@ class _AddCallFormState extends State<AddCallForm> {
       );
     }
 
-    // Original buildTextField implementation for other fields
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        decoration: InputDecoration(
-          labelText: isRequired ? '$label *' : label,
-          labelStyle: TextStyle(color: Color(0xFF7b68ee)),
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF7b68ee)),
+    // General TextFormField for all other fields
+    return GestureDetector(
+      onTap: onTap, // Handle onTap event if provided
+      child: AbsorbPointer(
+        absorbing: onTap != null, // Prevent keyboard input if onTap is provided
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: TextFormField(
+            controller: controller, // Use the controller if provided
+            decoration: InputDecoration(
+              labelText: isRequired ? '$label *' : label,
+              labelStyle: TextStyle(color: Color(0xFF7b68ee)),
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(icon, color: Color(0xFF7b68ee)),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF7b68ee)),
+              ),
+            ),
+            maxLines: maxLines,
+            onChanged: controller == null ? onChanged : null, // Use onChanged only if no controller is set
+            validator: isRequired
+                ? (value) {
+              if (value == null || value.isEmpty) {
+                return '$label is required';
+              }
+              return null;
+            }
+                : null,
           ),
         ),
-        maxLines: maxLines,
-        onChanged: onChanged,
-        validator: isRequired
-            ? (value) {
-          if (value == null || value.isEmpty) {
-            return '$label is required';
-          }
-          return null;
-        }
-            : null,
       ),
     );
   }
+
 
   Widget buildDurationField() {
     return Padding(
